@@ -337,7 +337,8 @@ async function pageGraph(s, a) {
     <div class="ag-canvas">
       <svg id="agSvg"></svg>
       <div class="ag-legend" id="agLegend">
-        <span><i class="dot" style="background:#2d6b50"></i>Ayet</span>
+        <span><i class="dot" style="background:#2d6b50"></i>Ayet (tam alıntı)</span>
+        <span><i class="dot ring"></i>Ayet (kısmi alıntı)</span>
         <span><i class="dot" style="background:#b08d2f"></i>Soru</span>
         <span><i class="dot" style="background:#1f4d3a;outline:2px solid #b08d2f;outline-offset:1px"></i>Merkez</span>
       </div>
@@ -401,8 +402,12 @@ async function pageGraph(s, a) {
       }).join('') +
       nodes.map((n) => {
         const r = n.center ? 22 : n.type === 'question' ? 8 : 11;
-        const fill = n.type === 'question' ? '#b08d2f' : n.center ? '#1f4d3a' : '#2d6b50';
-        const stroke = n.center ? ' stroke="#b08d2f" stroke-width="4"' : '';
+        const partial = n.type === 'verse' && !n.center && !!n.highlight;
+        let fill, stroke;
+        if (n.center) { fill = '#1f4d3a'; stroke = ' stroke="#b08d2f" stroke-width="4"'; }
+        else if (n.type === 'question') { fill = '#b08d2f'; stroke = ''; }
+        else if (partial) { fill = 'none'; stroke = ' stroke="#2d6b50" stroke-width="3"'; }
+        else { fill = '#2d6b50'; stroke = ''; }
         const label = n.type === 'verse'
           ? `<text x="${n.x.toFixed(1)}" y="${(n.y + r + 13).toFixed(1)}" text-anchor="middle" class="ag-lbl">${n.label}</text>` : '';
         return `<g class="ag-node" data-id="${n.id}">
@@ -476,17 +481,20 @@ async function pageGraph(s, a) {
   svg.addEventListener('pointerup', () => { dragN = null; pan = null; });
 
   // --- düğüm seçimi / önizleme ---
-  async function showVerse(ns, na) {
+  async function showVerse(ns, na, highlightJson) {
     panel.innerHTML = '<div class="loading">Yükleniyor…</div>';
     const info = await get(`/api/graph/info/${ns}/${na}`);
+    const isCenter = ns == s && na == a;
+    const partial = !isCenter && !!highlightJson;
+    const tag = isCenter ? '' : `<span class="ag-tag ${partial ? 'partial' : 'full'}">${partial ? 'KISMİ ALINTI' : 'TAM ALINTI'}</span>`;
     panel.innerHTML = `
-      <div class="pref">SEÇİLİ DÜĞÜM · AYET</div>
+      <div class="pref">SEÇİLİ DÜĞÜM · AYET${tag}</div>
       <h2>${esc(info.surah_name)} ${info.ref}</h2>
       <div class="ar">${esc(info.arabic || '')}</div>
-      <p>${esc(info.meal || '')}</p>
+      <p>${partial ? markText(info.meal, highlightJson) : esc(info.meal || '')}</p>
       <div class="pmeta">Bu ayet <b>${info.answers}</b> soruya cevap, <b>${info.asks}</b> sorunun kaynağı</div>
       <div class="pbtns">
-        ${!(ns == s && na == a) ? `<a class="pbtn g" href="/ag/${ns}/${na}" data-link>Ağı buraya merkezle</a>` : ''}
+        ${!isCenter ? `<a class="pbtn g" href="/ag/${ns}/${na}" data-link>Ağı buraya merkezle</a>` : ''}
         <a class="pbtn o" href="/ayet/${ns}/${na}" data-link>Ayete git →</a>
       </div>`;
   }
@@ -506,7 +514,7 @@ async function pageGraph(s, a) {
     if (!gEl) return;
     const n = byId.get(gEl.dataset.id);
     if (!n) return;
-    if (n.type === 'verse') showVerse(n.s, n.a);
+    if (n.type === 'verse') showVerse(n.s, n.a, n.highlight);
     else showQuestion(n);
   });
 

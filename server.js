@@ -251,7 +251,7 @@ const qQuestionsOn = db.prepare(`
   ORDER BY qv.sira, qv.id
 `);
 const qAnswerVersesOf = db.prepare(`
-  SELECT DISTINCT ans.verse_id AS vid, v.surah_no AS sn, v.ayah_no AS an
+  SELECT DISTINCT ans.verse_id AS vid, v.surah_no AS sn, v.ayah_no AS an, ans.highlight AS highlight
   FROM answers ans JOIN verses v ON v.id = ans.verse_id
   WHERE ans.question_id = ? AND ans.lang = ? AND ans.is_active = 1
 `);
@@ -263,7 +263,7 @@ const qIncomingQuestions = db.prepare(`
   LIMIT 30
 `);
 const qSourceVersesOf = db.prepare(`
-  SELECT DISTINCT qv.verse_id AS vid, v.surah_no AS sn, v.ayah_no AS an
+  SELECT DISTINCT qv.verse_id AS vid, v.surah_no AS sn, v.ayah_no AS an, qv.highlight AS highlight
   FROM question_verses qv JOIN verses v ON v.id = qv.verse_id
   WHERE qv.question_id = ? AND qv.lang = ? AND qv.is_active = 1
   LIMIT 5
@@ -287,9 +287,12 @@ app.get('/api/graph/verse/:s/:a', (req, res) => {
   };
   const vid = (x) => 'v' + x;
   const qid = (x) => 'q' + x;
-  const addVerse = (id, sn, an) => {
+  const addVerse = (id, sn, an, highlight) => {
     if (!nodes.has(vid(id)) && nodes.size < CAP) {
-      nodes.set(vid(id), { id: vid(id), type: 'verse', s: sn, a: an, label: sn + ':' + an });
+      nodes.set(vid(id), { id: vid(id), type: 'verse', s: sn, a: an, label: sn + ':' + an, highlight: highlight || null });
+    } else if (nodes.has(vid(id)) && highlight && !nodes.get(vid(id)).highlight) {
+      // aynı ayete başka bir bağlantı üzerinden ulaşılmışsa, ilk bulunan kısmi alıntı bilgisi korunur
+      nodes.get(vid(id)).highlight = highlight;
     }
     return nodes.has(vid(id));
   };
@@ -308,7 +311,7 @@ app.get('/api/graph/verse/:s/:a', (req, res) => {
       for (const av of qAnswerVersesOf.all(q.id, l)) {
         if (av.vid === vRow.id) continue;
         const isNew = !nodes.has(vid(av.vid));
-        if (!addVerse(av.vid, av.sn, av.an)) break;
+        if (!addVerse(av.vid, av.sn, av.an, av.highlight)) break;
         addEdge(qid(q.id), vid(av.vid), 'cevap');
         if (isNew) added.push({ id: av.vid, s: av.sn, a: av.an });
       }
@@ -331,7 +334,7 @@ app.get('/api/graph/verse/:s/:a', (req, res) => {
     for (const sv of srcs) {
       if (sv.vid === verse.id) continue;
       const isNew = !nodes.has(vid(sv.vid));
-      if (!addVerse(sv.vid, sv.sn, sv.an)) break;
+      if (!addVerse(sv.vid, sv.sn, sv.an, sv.highlight)) break;
       addEdge(vid(sv.vid), qid(q.id), 'soru');
       if (isNew) level1.push({ id: sv.vid, s: sv.sn, a: sv.an });
     }

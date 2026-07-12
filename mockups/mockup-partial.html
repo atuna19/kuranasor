@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Kısmi Alıntı Gösterimi — Maket v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=Amiri+Quran&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#faf7f0;--paper-2:#f3eee2;--ink:#1c1a15;--ink-2:#57503f;--line:#e5ddc9;
+--gold:#b08d2f;--gold-soft:#f0e6c8;--green:#1f4d3a;--green-2:#2d6b50;--green-soft:#e7efe9}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#dcd6c6;font-family:'Inter',sans-serif;color:var(--ink)}
+.screen{max-width:1180px;margin:40px auto;background:var(--paper);border-radius:24px;overflow:hidden;box-shadow:0 30px 80px rgba(40,32,10,.25);padding:0 0 40px}
+.screen-label{max-width:1180px;margin:48px auto -28px;font:600 12px 'Inter';letter-spacing:.2em;color:#6b6350}
+nav{display:flex;align-items:center;gap:28px;padding:16px 36px;border-bottom:1px solid var(--line)}
+.logo{display:flex;align-items:center;gap:12px;font:600 24px 'Fraunces';color:var(--green)}
+.logo .mark{width:40px;height:40px;border-radius:11px;background:var(--green);color:var(--gold-soft);display:flex;align-items:center;justify-content:center;font:700 15px 'Fraunces'}
+
+.sec-head{padding:26px 36px 6px}
+.sec-head h1{font:400 26px 'Fraunces';color:var(--green)}
+.sec-head p{color:#8a8168;font-size:13.5px;margin-top:6px;max-width:760px;line-height:1.6}
+.sec-head b{color:var(--green)}
+
+/* ---- gerçek ag-wrap yapısına birebir uyumlu ---- */
+.ag-wrap{display:grid;grid-template-columns:1fr 330px;margin:18px 36px;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#fff}
+.ag-canvas{position:relative;height:400px;background:radial-gradient(700px 300px at 45% 45%,#fff 0%,var(--paper) 75%)}
+.ag-canvas svg{width:100%;height:100%;display:block}
+.ag-node{cursor:pointer}
+.ag-node .hitbox{fill:transparent}
+.ag-legend{position:absolute;left:16px;bottom:14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;font:500 12px 'Inter';color:var(--ink-2);display:flex;flex-direction:column;gap:7px}
+.ag-legend span{display:flex;align-items:center;gap:9px}
+.leg-ic{display:block;width:14px;height:14px;flex:0 0 14px}
+.ag-panel{border-left:1px solid var(--line);padding:22px;display:flex;flex-direction:column;gap:12px;min-height:300px}
+.ag-panel .pref{font:600 11.5px 'Inter';letter-spacing:.14em;color:var(--gold)}
+.ag-panel .tag{display:inline-block;font:600 10.5px 'Inter';letter-spacing:.04em;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle}
+.ag-panel .tag.full{background:var(--green-soft);color:var(--green)}
+.ag-panel .tag.partial{background:var(--gold-soft);color:#8a6f1e}
+.ag-panel h2{font:400 23px 'Fraunces';color:var(--green)}
+.ag-panel .ar{font-family:'Amiri Quran';font-size:21px;direction:rtl;text-align:right;line-height:1.9;border-bottom:1px dashed var(--line);padding-bottom:10px}
+.ag-panel p{font:400 15.5px/1.65 'Fraunces'}
+.ag-panel p mark{background:linear-gradient(transparent 55%, var(--gold-soft) 55%);color:var(--ink);font-weight:600;padding:0 2px;border-radius:2px}
+.ag-panel .hint{color:#8a8168;font-size:12.5px;margin-top:auto}
+
+/* ---- BÖLÜM 2 (ayet sayfası, önceki maketten) ---- */
+.crumb{padding:24px 36px 0;font:500 13px 'Inter';color:#8a8168}
+.crumb b{color:var(--green)}
+.verse-wrap{padding:20px 36px 10px;display:grid;grid-template-columns:1.4fr 1fr;gap:34px}
+.verse-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:34px 38px;position:relative}
+.verse-card .ref{position:absolute;top:-15px;left:32px;background:var(--green);color:#fff;font:600 13px 'Inter';padding:7px 16px;border-radius:99px}
+.arabic{font-family:'Amiri Quran';font-size:29px;line-height:2.1;text-align:right;direction:rtl}
+#mealText{font:400 18px/1.75 'Fraunces';margin-top:20px;padding-top:20px;border-top:1px dashed var(--line);transition:.15s}
+#mealText mark{background:linear-gradient(transparent 55%, var(--gold-soft) 55%);color:var(--ink);font-weight:600;padding:0 2px;border-radius:2px}
+.qpanel h3{font:500 20px 'Fraunces';margin-bottom:6px;color:var(--green)}
+.qpanel p.hint{color:#8a8168;font-size:13px;margin-bottom:16px}
+.qitem{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:12px;padding:14px 18px;margin-bottom:10px;font:500 14.5px/1.45 'Inter';cursor:pointer;transition:.15s}
+.qitem:hover,.qitem.active{background:var(--green);border-color:var(--green);color:#fff}
+.qitem:hover .n,.qitem.active .n{color:var(--gold-soft)}
+.qitem .n{color:var(--gold);font:600 13px 'Fraunces';flex:none}
+note{display:block;margin:10px 36px 0;background:var(--green-soft);border:1px solid #cfe0d5;border-radius:12px;padding:12px 16px;font-size:12.5px;color:var(--green);line-height:1.6}
+</style>
+</head>
+<body>
+
+<div class="screen-label">1 — AĞ: KISMİ ALINTININ METNİ PANELDE BELİRİYOR</div>
+<div class="screen">
+  <nav><div class="logo"><span class="mark">KS</span>Kuran'a Sor</div></nav>
+  <div class="sec-head">
+    <h1>Halka şekli yalnızca işaret — asıl metin panelde çıkıyor</h1>
+    <p>Herhangi bir ayet düğümüne fare ile gelin/tıklayın: <b>tam alıntı</b> düğümlerde ayetin tamamı düz yazılır, <b>kısmi alıntı</b> düğümlerde ise alıntılanan cümle <mark style="background:#f0e6c8;padding:0 2px">altın vurguyla</mark> ayetin içinde işaretlenir. Bu davranış ağdaki <b>her</b> kısmi düğüm için aynıdır.</p>
+  </div>
+  <div class="ag-wrap">
+    <div class="ag-canvas">
+      <svg width="820" height="400" viewBox="0 0 820 400" id="agDemo" style="display:block"></svg>
+      <div class="ag-legend">
+        <span><svg class="leg-ic" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#2d6b50"/></svg>Ayet (tam alıntı)</span>
+        <span><svg class="leg-ic" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="#2d6b50" stroke-width="2.5"/></svg>Ayet (kısmi alıntı)</span>
+        <span><svg class="leg-ic" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#b08d2f"/></svg>Soru</span>
+      </div>
+    </div>
+    <div class="ag-panel" id="agPanel">
+      <div class="pref">DÜĞÜME FARE İLE GELİN</div>
+      <p style="color:#8a8168;font-size:13.5px">Sağdaki panel, üzerine geldiğiniz ayetin tam metnini — kısmiyse ilgili cümle vurgulanmış halde — gösterecek.</p>
+    </div>
+  </div>
+</div>
+
+<div class="screen-label">2 — AYET SAYFASI: SORUYA GELİNCE İLGİLİ BÖLÜM VURGULANIR (AYNI MANTIK)</div>
+<div class="screen">
+  <nav><div class="logo"><span class="mark">KS</span>Kuran'a Sor</div></nav>
+  <div class="crumb">Sureler / Fatiha / <b>1:2</b></div>
+  <div class="verse-wrap">
+    <div>
+      <div class="verse-card">
+        <div class="ref">FATİHA 1:2</div>
+        <div class="arabic">اَلْحَمْدُ لِلّٰهِ رَبِّ الْعَالَم۪ينَۙ</div>
+        <div id="mealText">Övgü, evrenlerin Rabbi Allah'adır.</div>
+      </div>
+    </div>
+    <div class="qpanel">
+      <h3>Bu ayete sorulan sorular</h3>
+      <p class="hint">Fare ile bir sorunun üzerine gelin →</p>
+      <div class="qitem" data-h="evrenlerin Rabbi"><span class="n">01</span><span>Evrenlerin Rabbi (Rabbil alemin) nedir?</span></div>
+      <div class="qitem" data-h="Övgü"><span class="n">02</span><span>Övgü neden evrenlerin Rabbi Allah'adır?</span></div>
+      <div class="qitem" data-h="evrenlerin"><span class="n">03</span><span>Neden evrenler (çoğul) kaç evren?</span></div>
+      <div class="qitem" data-h=""><span class="n">04</span><span>Sadece Allah'ı övmemiz için bazı nedenler</span></div>
+    </div>
+  </div>
+  <note>Ayet sayfasında da aynı mantık: highlight verisi boşsa (4. soru) metin değişmez, doluysa ilgili kısım vurgulanır. Ağdaki panel de birebir aynı kuralı izliyor.</note>
+</div>
+
+<script>
+// ---- Gerçek veritabanı verisiyle örnek düğümler (1:2 -> "Neden evrenler" sorusunun cevapları) ----
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('agDemo');
+function el(t, a) { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); svg.appendChild(e); return e; }
+
+const center = { x: 130, y: 200, ref: '1:2', surah: 'Fatiha', arabic: 'اَلْحَمْدُ لِلّٰهِ رَبِّ الْعَالَم۪ينَۙ', meal: "Övgü, evrenlerin Rabbi Allah'adır.", highlight: null };
+const q = { x: 330, y: 200 };
+const verses = [
+  { x: 560, y: 70,  ref: '2:29',  surah: 'Bakara',   arabic: 'هُوَ الَّذ۪ي خَلَقَ لَكُمْ مَا فِي الْاَرْضِ جَم۪يعاً',
+    meal: "Yeryüzünde her şeyi sizin için yaratan O'dur. Sonra göğe yönelip onu yedi gök olarak düzenledi. O, her şeyi Bilir.",
+    highlight: "Sonra göğe yönelip onu yedi gök olarak düzenledi." },
+  { x: 700, y: 140, ref: '41:11', surah: 'Fussilet', arabic: 'ثُمَّ اسْتَوٰٓى اِلَى السَّمَٓاءِ وَهِيَ دُخَانٌ',
+    meal: 'Sonra duman halindeki göğe yönelerek ona ve yere, "İsteyerek veya istemeyerek gelin," dedi. Onlar da, "İsteyerek geldik," dediler.',
+    highlight: null },
+  { x: 700, y: 260, ref: '41:12', surah: 'Fussilet', arabic: 'فَقَضٰيهُنَّ سَبْعَ سَمٰوَاتٍ ف۪ي يَوْمَيْنِ',
+    meal: "Böylece onları iki günde yedi gök olarak tamamladı ve her göğe özel yasaları bildirdi. Ve biz en aşağıdaki göğü ise lambalarla ve koruma sistemiyle donattık.",
+    highlight: "Böylece onları iki günde yedi gök olarak tamamladı" },
+  { x: 560, y: 330, ref: '67:3',  surah: 'Mülk',      arabic: 'اَلَّذ۪ي خَلَقَ سَبْعَ سَمٰوَاتٍ طِبَاقاًۜ',
+    meal: "O yedi göğü kat kat yaratmıştır. Rahman'ın yaratışında her hangi bir kusur bulamazsın. Bakışlarını yönelt de bak; herhangi bir çatlak görebiliyor musun?",
+    highlight: "O yedi göğü kat kat yaratmıştır." },
+];
+
+el('line', {x1:center.x,y1:center.y,x2:q.x,y2:q.y,stroke:'#c9bd9c','stroke-width':1.7});
+verses.forEach(v => el('line', {x1:q.x,y1:q.y,x2:v.x,y2:v.y,stroke:'#ddd3ba','stroke-width':1.1}));
+
+function markText(meal, highlight) {
+  if (!highlight) return meal;
+  return meal.includes(highlight) ? meal.replace(highlight, '<mark>' + highlight + '</mark>') : meal;
+}
+
+function renderPanel(v) {
+  const panel = document.getElementById('agPanel');
+  const partial = !!v.highlight;
+  panel.innerHTML = `
+    <div class="pref">SEÇİLİ DÜĞÜM · AYET<span class="tag ${partial ? 'partial' : 'full'}">${partial ? 'KISMİ ALINTI' : 'TAM ALINTI'}</span></div>
+    <h2>${v.surah} ${v.ref}</h2>
+    <div class="ar">${v.arabic}</div>
+    <p>${markText(v.meal, v.highlight)}</p>
+    <div class="hint">${partial ? 'Yalnızca vurgulu cümle bu bağlantıda referans alınmış.' : 'Ayetin tamamı bu bağlantıda referans alınmış.'}</div>`;
+}
+
+// merkez düğüm
+const cg = el('g', {class:'ag-node'});
+svg.appendChild(cg);
+el.call(null); // no-op guard
+const cCircle = document.createElementNS(NS,'circle');
+cCircle.setAttribute('cx',center.x); cCircle.setAttribute('cy',center.y); cCircle.setAttribute('r',20);
+cCircle.setAttribute('fill','#1f4d3a'); cCircle.setAttribute('stroke','#b08d2f'); cCircle.setAttribute('stroke-width',4);
+cg.appendChild(cCircle);
+const cLabel = document.createElementNS(NS,'text');
+cLabel.setAttribute('x',center.x); cLabel.setAttribute('y',center.y+4); cLabel.setAttribute('text-anchor','middle');
+cLabel.setAttribute('style','font:700 11px Inter;fill:#f0e6c8;pointer-events:none'); cLabel.textContent = center.ref;
+cg.appendChild(cLabel);
+cg.style.cursor = 'pointer';
+cg.addEventListener('mouseenter', () => renderPanel(center));
+
+// soru düğümü
+const qCircle = el('circle', {cx:q.x,cy:q.y,r:9,fill:'#b08d2f'});
+
+// ayet düğümleri
+verses.forEach(v => {
+  const g = document.createElementNS(NS,'g');
+  g.setAttribute('class','ag-node');
+  svg.appendChild(g);
+  const partial = !!v.highlight;
+  const c = document.createElementNS(NS,'circle');
+  c.setAttribute('cx',v.x); c.setAttribute('cy',v.y); c.setAttribute('r',13);
+  if (partial) { c.setAttribute('fill','none'); c.setAttribute('stroke','#2d6b50'); c.setAttribute('stroke-width',3); }
+  else { c.setAttribute('fill','#2d6b50'); }
+  g.appendChild(c);
+  const t = document.createElementNS(NS,'text');
+  t.setAttribute('x',v.x); t.setAttribute('y',v.y+30); t.setAttribute('text-anchor','middle');
+  t.setAttribute('style','font:600 11px Inter;fill:#57503f;pointer-events:none'); t.textContent = v.ref;
+  g.appendChild(t);
+  g.style.cursor = 'pointer';
+  g.addEventListener('mouseenter', () => renderPanel(v));
+});
+
+// ---- BÖLÜM 2 hover ----
+const mealEl = document.getElementById('mealText');
+const original = mealEl.textContent;
+document.querySelectorAll('.qitem').forEach(item => {
+  item.addEventListener('mouseenter', () => {
+    document.querySelectorAll('.qitem').forEach(i=>i.classList.remove('active'));
+    item.classList.add('active');
+    const h = item.dataset.h;
+    mealEl.innerHTML = h ? original.replace(h, '<mark>' + h + '</mark>') : original;
+  });
+  item.addEventListener('mouseleave', () => { item.classList.remove('active'); mealEl.textContent = original; });
+});
+</script>
+</body>
+</html>

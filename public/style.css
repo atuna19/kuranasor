@@ -162,15 +162,20 @@ footer{padding:26px 44px;border-top:1px solid var(--line);color:#8a8168;font-siz
 .ag-lbl{font:600 11px 'Inter';fill:#57503f;pointer-events:none}
 .ag-legend{position:absolute;left:16px;bottom:14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;font:500 12px 'Inter';color:var(--ink-2);display:flex;flex-direction:column;gap:7px;pointer-events:none}
 .ag-legend span{display:flex;align-items:center;gap:8px}
-.ag-legend .dot{width:11px;height:11px;border-radius:50%;display:inline-block}
+.ag-legend .dot{width:11px;height:11px;border-radius:50%;display:inline-block;background:#2d6b50}
+.ag-legend .dot.ring{background:none;border:2.5px solid #2d6b50;width:8px;height:8px}
 .ag-zoom{position:absolute;right:16px;bottom:14px;display:flex;flex-direction:column;gap:6px}
 .ag-zoom button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:#fff;font:600 17px 'Inter';color:var(--ink-2);cursor:pointer}
 .ag-zoom button:hover{border-color:var(--gold)}
 .ag-panel{border-left:1px solid var(--line);padding:22px;display:flex;flex-direction:column;gap:12px;min-height:300px}
 .ag-panel .pref{font:600 11.5px 'Inter';letter-spacing:.14em;color:var(--gold)}
+.ag-tag{display:inline-block;font:600 10px 'Inter';letter-spacing:.04em;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle}
+.ag-tag.full{background:var(--green-soft);color:var(--green)}
+.ag-tag.partial{background:var(--gold-soft);color:#8a6f1e}
 .ag-panel h2{font:400 24px 'Fraunces';color:var(--green)}
 .ag-panel .ar{font-family:'Amiri Quran';font-size:22px;direction:rtl;text-align:right;line-height:1.9;border-bottom:1px dashed var(--line);padding-bottom:10px}
 .ag-panel p{font:400 15px/1.6 'Fraunces'}
+.ag-panel p mark{background:linear-gradient(transparent 55%, var(--gold-soft) 55%);color:var(--ink);font-weight:600;padding:0 2px;border-radius:2px}
 .ag-panel .pmeta{font:500 12.5px 'Inter';color:#8a8168}
 .ag-panel .pmeta b{color:var(--green)}
 .pbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:10px}
