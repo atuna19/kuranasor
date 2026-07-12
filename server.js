@@ -244,7 +244,7 @@ app.get('/api/search', (req, res) => {
 
 // ---------- ayet ağı (graf) ----------
 const qQuestionsOn = db.prepare(`
-  SELECT DISTINCT qv.question_id AS id, qt.text
+  SELECT DISTINCT qv.question_id AS id, qt.text, qv.highlight AS highlight
   FROM question_verses qv
   JOIN question_texts qt ON qt.question_id = qv.question_id AND qt.lang = qv.lang
   WHERE qv.verse_id = ? AND qv.lang = ? AND qv.is_active = 1
@@ -296,9 +296,9 @@ app.get('/api/graph/verse/:s/:a', (req, res) => {
     }
     return nodes.has(vid(id));
   };
-  const addQuestion = (id, text, srcS, srcA) => {
+  const addQuestion = (id, text, srcS, srcA, highlight) => {
     if (!nodes.has(qid(id)) && nodes.size < CAP) {
-      nodes.set(qid(id), { id: qid(id), type: 'question', qid: id, label: text.trim(), s: srcS, a: srcA });
+      nodes.set(qid(id), { id: qid(id), type: 'question', qid: id, label: text.trim(), s: srcS, a: srcA, highlight: highlight || null });
     }
     return nodes.has(qid(id));
   };
@@ -306,7 +306,7 @@ app.get('/api/graph/verse/:s/:a', (req, res) => {
   const expandVerse = (vRow) => {
     const added = []; // eklenen yeni ayet düğümleri (derinlik genişletme için)
     for (const q of qQuestionsOn.all(vRow.id, l)) {
-      if (!addQuestion(q.id, q.text, vRow.s, vRow.a)) break;
+      if (!addQuestion(q.id, q.text, vRow.s, vRow.a, q.highlight)) break;
       addEdge(vid(vRow.id), qid(q.id), 'soru');
       for (const av of qAnswerVersesOf.all(q.id, l)) {
         if (av.vid === vRow.id) continue;
@@ -329,7 +329,7 @@ app.get('/api/graph/verse/:s/:a', (req, res) => {
     if (nodes.has(qid(q.id))) continue;
     const srcs = qSourceVersesOf.all(q.id, l);
     const first = srcs[0];
-    if (!addQuestion(q.id, q.text, first ? first.sn : s, first ? first.an : a)) break;
+    if (!addQuestion(q.id, q.text, first ? first.sn : s, first ? first.an : a, first ? first.highlight : null)) break;
     addEdge(qid(q.id), vid(verse.id), 'cevap');
     for (const sv of srcs) {
       if (sv.vid === verse.id) continue;

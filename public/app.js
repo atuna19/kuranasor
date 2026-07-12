@@ -122,7 +122,7 @@ async function pageVerse(s, a) {
         <div class="ref">${esc(surah.name.trim().toUpperCase())} ${s}:${a}</div>
         ${besmele ? `<a class="besmele-line" href="/ayet/1/1" data-link title="${esc((besmele.meal || '').trim())} (numarasız besmele)">${esc(besmele.arabic || '')}</a>` : ''}
         <div class="arabic">${esc(verse.arabic || '')}</div>
-        <div class="meal-text">${esc(verse.meal || '')}</div>
+        <div class="meal-text" id="mealText">${esc(verse.meal || '')}</div>
         ${verse.transcription ? `<div class="trans">${esc(verse.transcription)}</div>` : ''}
       </div>
       <div class="verse-tools">
@@ -149,13 +149,25 @@ async function pageVerse(s, a) {
       <h3>Bu ayete sorulan sorular</h3>
       <p class="hint">Her sorunun cevabı yalnızca başka ayetlerdir.</p>
       ${questions.length ? questions.map((q, i) => `
-        <a class="qitem" href="/soru/${q.question_id}/${s}/${a}" data-link>
+        <a class="qitem" href="/soru/${q.question_id}/${s}/${a}" data-link data-qid="${q.question_id}">
           <span class="n">${String(i + 1).padStart(2, '0')}</span>
           <span>${esc(q.text.trim())}</span>
           <span class="go">→</span>
         </a>`).join('') : `<div class="empty">Bu ayete henüz soru eklenmemiş.</div>`}
     </div>
   </div>`;
+  // Soru listesine gelince ayetin ilgili bölümü vurgulansın
+  const mealTextEl = document.getElementById('mealText');
+  const mealOriginal = verse.meal || '';
+  document.querySelectorAll('.qitem').forEach((item) => {
+    const q = questions.find((x) => String(x.question_id) === item.dataset.qid);
+    item.addEventListener('mouseenter', () => {
+      mealTextEl.innerHTML = q && q.highlight ? markText(mealOriginal, q.highlight) : esc(mealOriginal);
+    });
+    item.addEventListener('mouseleave', () => {
+      mealTextEl.textContent = mealOriginal;
+    });
+  });
   const cmpBtn = document.getElementById('cmpBtn');
   if (cmpBtn) cmpBtn.addEventListener('click', () => {
     const el = document.getElementById('cmp');
@@ -480,10 +492,13 @@ async function pageGraph(s, a) {
   });
   svg.addEventListener('pointerup', () => { dragN = null; pan = null; });
 
-  // --- düğüm seçimi / önizleme ---
+  // --- düğüm seçimi / önizleme (hover + tıklama, ikisi de aynı fonksiyonu tetikler) ---
+  let panelToken = 0;
   async function showVerse(ns, na, highlightJson) {
+    const myToken = ++panelToken;
     panel.innerHTML = '<div class="loading">Yükleniyor…</div>';
     const info = await get(`/api/graph/info/${ns}/${na}`);
+    if (myToken !== panelToken) return; // daha yeni bir seçim yapıldı, eski sonucu yok say
     const isCenter = ns == s && na == a;
     const partial = !isCenter && !!highlightJson;
     const tag = isCenter ? '' : `<span class="ag-tag ${partial ? 'partial' : 'full'}">${partial ? 'KISMİ ALINTI' : 'TAM ALINTI'}</span>`;
@@ -498,24 +513,47 @@ async function pageGraph(s, a) {
         <a class="pbtn o" href="/ayet/${ns}/${na}" data-link>Ayete git →</a>
       </div>`;
   }
-  function showQuestion(n) {
+  async function showQuestion(n) {
+    const myToken = ++panelToken;
+    panel.innerHTML = '<div class="loading">Yükleniyor…</div>';
+    const info = await get(`/api/graph/info/${n.s}/${n.a}`);
+    if (myToken !== panelToken) return;
+    const partial = !!n.highlight;
+    const tag = `<span class="ag-tag ${partial ? 'partial' : 'full'}">${partial ? 'KISMİ ALINTI' : 'TAM ALINTI'}</span>`;
     panel.innerHTML = `
-      <div class="pref">SEÇİLİ DÜĞÜM · SORU</div>
-      <h2 style="font-size:21px">${esc(n.label)}</h2>
-      <div class="pmeta">Kaynak ayet: ${n.s}:${n.a}</div>
+      <div class="pref">SEÇİLİ DÜĞÜM · SORU${tag}</div>
+      <h2 style="font-size:19px">${esc(n.label)}</h2>
+      <div class="ar">${esc(info.arabic || '')}</div>
+      <p>${partial ? markText(info.meal, n.highlight) : esc(info.meal || '')}</p>
+      <div class="pmeta">Kaynak ayet: ${esc(info.surah_name)} ${n.s}:${n.a}</div>
       <div class="pbtns">
         <a class="pbtn g" href="/soru/${n.qid}/${n.s}/${n.a}" data-link>Soruya git →</a>
         <a class="pbtn o" href="/ayet/${n.s}/${n.a}" data-link>Kaynak ayete git</a>
       </div>`;
   }
+  function selectNode(n) {
+    if (!n) return;
+    if (n.type === 'verse') showVerse(n.s, n.a, n.highlight);
+    else showQuestion(n);
+  }
+  let lastHoverId = null;
+  svg.addEventListener('mouseover', (e) => {
+    const gEl = e.target.closest('.ag-node');
+    if (!gEl || gEl.dataset.id === lastHoverId) return;
+    lastHoverId = gEl.dataset.id;
+    selectNode(byId.get(gEl.dataset.id));
+  });
+  svg.addEventListener('mouseout', (e) => {
+    const gEl = e.target.closest('.ag-node');
+    if (!gEl) return;
+    const to = e.relatedTarget && e.relatedTarget.closest ? e.relatedTarget.closest('.ag-node') : null;
+    if (to !== gEl) lastHoverId = null;
+  });
   svg.addEventListener('click', (e) => {
     if (moved > 6) return; // sürükleme sonrası tıklama sayılmasın
     const gEl = e.target.closest('.ag-node');
     if (!gEl) return;
-    const n = byId.get(gEl.dataset.id);
-    if (!n) return;
-    if (n.type === 'verse') showVerse(n.s, n.a, n.highlight);
-    else showQuestion(n);
+    selectNode(byId.get(gEl.dataset.id));
   });
 
   await load();
