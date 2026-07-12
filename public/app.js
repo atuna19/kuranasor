@@ -516,6 +516,17 @@ async function pageGraph(s, a) {
   async function showQuestion(n) {
     const myToken = ++panelToken;
     panel.innerHTML = '<div class="loading">Yükleniyor…</div>';
+    if (n.s == null || n.noSource) {
+      if (myToken !== panelToken) return;
+      panel.innerHTML = `
+        <div class="pref">SEÇİLİ DÜĞÜM · SORU</div>
+        <h2 style="font-size:19px">${esc(n.label)}</h2>
+        <p style="color:#8a8168;font-size:13.5px;font-style:italic">Bu soru tek bir ayete sorulmamış; birden çok ayetin ortak cevabı olarak kayıtlı, tek bir kaynak ayeti yok.</p>
+        <div class="pbtns">
+          <a class="pbtn g" href="/soru/${n.qid}/${s}/${a}" data-link>Soruya git →</a>
+        </div>`;
+      return;
+    }
     const info = await get(`/api/graph/info/${n.s}/${n.a}`);
     if (myToken !== panelToken) return;
     const partial = !!n.highlight;

@@ -296,9 +296,9 @@ app.get('/api/graph/verse/:s/:a', (req, res) => {
     }
     return nodes.has(vid(id));
   };
-  const addQuestion = (id, text, srcS, srcA, highlight) => {
+  const addQuestion = (id, text, srcS, srcA, highlight, noSource) => {
     if (!nodes.has(qid(id)) && nodes.size < CAP) {
-      nodes.set(qid(id), { id: qid(id), type: 'question', qid: id, label: text.trim(), s: srcS, a: srcA, highlight: highlight || null });
+      nodes.set(qid(id), { id: qid(id), type: 'question', qid: id, label: text.trim(), s: srcS, a: srcA, highlight: highlight || null, noSource: !!noSource });
     }
     return nodes.has(qid(id));
   };
@@ -329,7 +329,10 @@ app.get('/api/graph/verse/:s/:a', (req, res) => {
     if (nodes.has(qid(q.id))) continue;
     const srcs = qSourceVersesOf.all(q.id, l);
     const first = srcs[0];
-    if (!addQuestion(q.id, q.text, first ? first.sn : s, first ? first.an : a, first ? first.highlight : null)) break;
+    // Bazı sorular hiçbir ayete resmi olarak "sorulmamış", yalnızca birden çok ayetin
+    // ortak cevabı olarak kayıtlı (question_verses'te satırı yok). Bu durumda merkeze
+    // yanlışlıkla "sorulmuş" gibi göstermek yerine kaynaksız olarak işaretliyoruz.
+    if (!addQuestion(q.id, q.text, first ? first.sn : null, first ? first.an : null, first ? first.highlight : null, !first)) break;
     addEdge(qid(q.id), vid(verse.id), 'cevap');
     for (const sv of srcs) {
       if (sv.vid === verse.id) continue;
