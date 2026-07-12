@@ -31,10 +31,12 @@ Uygulama tek bir Node.js süreci + salt-okunur SQLite veritabanından oluşur. K
 
 ### Seçenek 1 — Render.com (önerilen, en kolay)
 
-Repoda hazır [`render.yaml`](render.yaml) dosyası var; 1 GB'lık kalıcı disk otomatik tanımlanır.
+Repoda hazır [`render.yaml`](render.yaml) dosyası var.
 
 1. Bu repoyu GitHub'a pushlayın.
 2. Render Dashboard → **New** → **Blueprint** → repoyu seçin.
+
+> **Ücretsiz plan** kalıcı disk desteklemez; bu yüzden `render.yaml`'da disk kapalı gelir — uygulama sorunsuz çalışır, yalnızca kullanıcı önerileri (`feedback.db`) her yeniden başlatmada sıfırlanır. Kalıcı öneri geçmişi istiyorsanız `render.yaml`'da `plan: starter` yapıp disk bloğunun yorumunu kaldırın (ücretli plan gerekir).
 3. Render `render.yaml`'ı okuyup Docker imajını build eder, `/data` kalıcı diski bağlar. Başka ayar gerekmez.
 
 ### Seçenek 2 — Railway / Fly.io / herhangi bir Docker platformu

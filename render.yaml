@@ -1,14 +1,20 @@
 # Render.com için hazır yapılandırma.
 # Kullanımı: Render Dashboard -> New -> Blueprint -> bu repoyu seç.
+#
+# Not: Ücretsiz (free) planda kalıcı disk desteklenmiyor, bu yüzden
+# kullanıcı önerileri (feedback.db) her yeniden başlatmada sıfırlanır.
+# Kalıcı öneri geçmişi istiyorsanız plan'ı "starter" yapıp aşağıdaki
+# disk bloğunun yorumunu kaldırın (DATA_DIR: /data ile birlikte).
 services:
   - type: web
     name: kuranasor
     runtime: docker
     plan: free
-    envVars:
-      - key: DATA_DIR
-        value: /data
-    disk:
-      name: kuranasor-data
-      mountPath: /data
-      sizeGB: 1
+    # plan: starter
+    # envVars:
+    #   - key: DATA_DIR
+    #     value: /data
+    # disk:
+    #   name: kuranasor-data
+    #   mountPath: /data
+    #   sizeGB: 1
