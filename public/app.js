@@ -429,9 +429,14 @@ async function pageGraph(s, a) {
       }).join('');
 
     const vCount = nodes.filter((n) => n.type === 'verse').length - 1;
-    const qCount = nodes.filter((n) => n.type === 'question').length;
+    const qAll = nodes.filter((n) => n.type === 'question');
+    // Bu ayete doğrudan sorulanlar ile ağ üzerinden bağlanan diğer sorular ayrı sayılır,
+    // ayet sayfasındaki soru sayısıyla karşılaştırma kafa karıştırmasın diye.
+    const centerQ = qAll.filter((n) => !n.noSource && n.s == s && n.a == a).length;
+    const otherQ = qAll.length - centerQ;
+    const qText = state.hideQ ? '' : ` · bu ayete ${centerQ} soru${otherQ ? ` · bağlantılı ${otherQ} soru` : ''}`;
     document.getElementById('agMeta').textContent =
-      `${vCount} ayet${state.hideQ ? '' : ' · ' + qCount + ' soru'}${state.data.capped ? ' · en bağlantılılar' : ''}`;
+      `${vCount} ayet${qText}${state.data.capped ? ' · en bağlantılılar' : ''}`;
     document.getElementById('agLegend').style.display = state.hideQ ? 'none' : '';
   }
 
@@ -673,6 +678,8 @@ function go(path) {
 document.addEventListener('click', (e) => {
   const link = e.target.closest('a[data-link]');
   if (!link) return;
+  // Ctrl/Cmd/Shift + tık ya da orta tuş: tarayıcının "yeni sekmede aç" davranışına karışma
+  if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0) return;
   e.preventDefault();
   go(link.getAttribute('href'));
 });

@@ -302,10 +302,19 @@ app.get('/api/graph/verse/:s/:a', (req, res) => {
     }
     return nodes.has(qid(id));
   };
-  // Bir ayetin dışa giden bağları: ona sorulan sorular + cevap ayetleri
-  const expandVerse = (vRow) => {
+  // Bir ayetin dışa giden bağları: ona sorulan sorular + cevap ayetleri.
+  // prioritize=true (merkez ayet) ise ÖNCE tüm soru düğümleri eklenir; böylece düğüm
+  // sınırı (CAP) cevap ayetleriyle dolsa bile merkezin hiçbir sorusu dışarıda kalmaz.
+  const expandVerse = (vRow, prioritize = false) => {
     const added = []; // eklenen yeni ayet düğümleri (derinlik genişletme için)
-    for (const q of qQuestionsOn.all(vRow.id, l)) {
+    const qs = qQuestionsOn.all(vRow.id, l);
+    if (prioritize) {
+      for (const q of qs) {
+        if (!addQuestion(q.id, q.text, vRow.s, vRow.a, q.highlight)) break;
+        addEdge(vid(vRow.id), qid(q.id), 'soru');
+      }
+    }
+    for (const q of qs) {
       if (!addQuestion(q.id, q.text, vRow.s, vRow.a, q.highlight)) break;
       addEdge(vid(vRow.id), qid(q.id), 'soru');
       for (const av of qAnswerVersesOf.all(q.id, l)) {
@@ -322,8 +331,8 @@ app.get('/api/graph/verse/:s/:a', (req, res) => {
   addVerse(verse.id, s, a);
   nodes.get(vid(verse.id)).center = true;
 
-  // Derinlik 1: merkezin dışa giden bağları
-  const level1 = expandVerse({ id: verse.id, s, a });
+  // Derinlik 1: merkezin dışa giden bağları (merkez soruları öncelikli)
+  const level1 = expandVerse({ id: verse.id, s, a }, true);
   // İçe gelen: merkezin cevap olduğu sorular ve kaynak ayetleri
   for (const q of qIncomingQuestions.all(verse.id, l)) {
     if (nodes.has(qid(q.id))) continue;
