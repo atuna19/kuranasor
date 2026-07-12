@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kuran'a Sor — Tasarım Mockup v1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=Amiri+Quran&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#faf7f0; --paper-2:#f3eee2; --ink:#1c1a15; --ink-2:#57503f;
+  --line:#e5ddc9; --gold:#b08d2f; --gold-soft:#f0e6c8;
+  --green:#1f4d3a; --green-2:#2d6b50; --green-soft:#e7efe9;
+  --radius:14px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#dcd6c6;font-family:'Inter',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.screen{max-width:1180px;margin:48px auto;background:var(--paper);border-radius:24px;overflow:hidden;box-shadow:0 30px 80px rgba(40,32,10,.25)}
+.screen-label{max-width:1180px;margin:56px auto -32px;font:600 12px/1 'Inter';letter-spacing:.2em;text-transform:uppercase;color:#6b6350}
+
+/* ---------- NAV ---------- */
+nav{display:flex;align-items:center;gap:28px;padding:20px 44px;border-bottom:1px solid var(--line)}
+.logo{display:flex;align-items:center;gap:12px;font:500 21px 'Fraunces';color:var(--green)}
+.logo .mark{width:34px;height:34px;border-radius:10px;background:var(--green);color:var(--gold-soft);display:flex;align-items:center;justify-content:center;font-family:'Amiri Quran';font-size:19px;padding-top:6px}
+nav .links{display:flex;gap:24px;margin-left:auto;font:500 14px 'Inter';color:var(--ink-2)}
+nav .links span.active{color:var(--green);border-bottom:2px solid var(--gold);padding-bottom:4px}
+.lang{border:1px solid var(--line);border-radius:99px;padding:7px 14px;font:600 12px 'Inter';color:var(--ink-2)}
+
+/* ---------- HERO ---------- */
+.hero{padding:72px 44px 56px;text-align:center;background:
+  radial-gradient(1200px 500px at 50% -200px, #ffffff 0%, transparent 60%), var(--paper)}
+.hero .bismillah{font-family:'Amiri Quran';font-size:34px;color:var(--gold);margin-bottom:22px}
+.hero h1{font:300 54px/1.15 'Fraunces';letter-spacing:-.01em;max-width:760px;margin:0 auto 18px}
+.hero h1 em{font-style:italic;font-weight:500;color:var(--green)}
+.hero p.sub{color:var(--ink-2);font-size:16.5px;max-width:560px;margin:0 auto 40px;line-height:1.65}
+.search{max-width:640px;margin:0 auto;display:flex;align-items:center;background:#fff;border:1px solid var(--line);border-radius:99px;padding:8px 8px 8px 26px;box-shadow:0 12px 40px rgba(40,32,10,.08)}
+.search input{flex:1;border:0;outline:0;font:400 16px 'Inter';background:transparent;color:var(--ink)}
+.search .btn{background:var(--green);color:#fff;border-radius:99px;padding:13px 26px;font:600 14px 'Inter'}
+.chips{display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap}
+.chip{font:500 13px 'Inter';color:var(--green);background:var(--green-soft);border-radius:99px;padding:8px 16px}
+.stats{display:flex;justify-content:center;gap:56px;margin-top:52px}
+.stat b{display:block;font:500 30px 'Fraunces';color:var(--green)}
+.stat span{font:500 12px 'Inter';letter-spacing:.12em;text-transform:uppercase;color:#8a8168}
+
+/* ---------- SURE GRID ---------- */
+.section{padding:44px}
+.section-head{display:flex;align-items:baseline;gap:18px;margin-bottom:24px}
+.section-head h2{font:500 26px 'Fraunces'}
+.toggle{margin-left:auto;display:flex;border:1px solid var(--line);border-radius:99px;overflow:hidden;font:600 12px 'Inter'}
+.toggle span{padding:8px 18px;color:var(--ink-2)}
+.toggle span.on{background:var(--green);color:#fff}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.sure{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;transition:.2s}
+.sure:hover{border-color:var(--gold)}
+.sure .no{width:40px;height:40px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--paper-2);border-radius:12px;font:600 14px 'Fraunces';color:var(--green);transform:rotate(45deg)}
+.sure .no i{transform:rotate(-45deg);font-style:normal}
+.sure b{font:600 15px 'Inter'}
+.sure small{display:block;color:#8a8168;font-size:12px;margin-top:2px}
+.sure .q{margin-left:auto;font:600 11px 'Inter';color:var(--gold);background:var(--gold-soft);padding:4px 10px;border-radius:99px}
+
+/* ---------- AYET EKRANI ---------- */
+.crumb{padding:26px 44px 0;font:500 13px 'Inter';color:#8a8168}
+.crumb b{color:var(--green)}
+.verse-wrap{padding:34px 44px 10px;display:grid;grid-template-columns:1.5fr 1fr;gap:40px}
+.verse-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:38px 42px;position:relative}
+.verse-card .ref{position:absolute;top:-14px;left:36px;background:var(--green);color:#fff;font:600 12px 'Inter';padding:6px 14px;border-radius:99px;letter-spacing:.06em}
+.arabic{font-family:'Amiri Quran';font-size:33px;line-height:2.1;text-align:right;color:var(--ink);direction:rtl}
+.meal{font:400 18.5px/1.75 'Fraunces';color:var(--ink);margin-top:22px;padding-top:22px;border-top:1px dashed var(--line)}
+.trans{margin-top:14px;color:#8a8168;font-size:13.5px;font-style:italic}
+.verse-tools{display:flex;gap:10px;margin-top:24px}
+.tool{font:600 12px 'Inter';color:var(--ink-2);border:1px solid var(--line);border-radius:99px;padding:8px 16px;background:var(--paper)}
+.qpanel h3{font:500 21px 'Fraunces';margin-bottom:6px}
+.qpanel p.hint{color:#8a8168;font-size:13.5px;margin-bottom:18px}
+.qitem{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:12px;padding:15px 18px;margin-bottom:10px;font:500 14.5px/1.45 'Inter'}
+.qitem .n{color:var(--gold);font:600 13px 'Fraunces';flex:none}
+.qitem .go{margin-left:auto;color:var(--green);font-size:18px;flex:none}
+.qitem.active{background:var(--green);border-color:var(--green);color:#fff}
+.qitem.active .n,.qitem.active .go{color:var(--gold-soft)}
+
+/* ---------- CEVAP ---------- */
+.answer-head{padding:40px 44px 8px;max-width:860px}
+.answer-head .q-label{font:600 12px 'Inter';letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:10px}
+.answer-head h2{font:400 34px/1.3 'Fraunces'}
+.answer-head .src{margin-top:12px;color:#8a8168;font-size:14px}
+.answer-head .src b{color:var(--green)}
+.answers{padding:26px 44px 48px;display:flex;flex-direction:column;gap:16px;max-width:960px}
+.ans{background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px 28px;display:grid;grid-template-columns:86px 1fr;gap:22px;align-items:start}
+.ans .ref2{font:600 14px 'Fraunces';color:var(--green);background:var(--green-soft);border-radius:10px;padding:10px 0;text-align:center}
+.ans .ref2 small{display:block;font:500 10px 'Inter';letter-spacing:.08em;color:var(--green-2);margin-top:3px;text-transform:uppercase}
+.ans p{font:400 16.5px/1.7 'Fraunces';color:var(--ink)}
+.ans p mark{background:linear-gradient(transparent 55%, var(--gold-soft) 55%);color:var(--ink);font-weight:600;padding:0 2px}
+.ans .meta{grid-column:2;display:flex;gap:14px;margin-top:6px;font:600 11.5px 'Inter';color:#8a8168}
+.graph-teaser{margin:8px 44px 48px;background:linear-gradient(120deg, var(--green) 0%, #143526 100%);border-radius:20px;padding:30px 36px;display:flex;align-items:center;gap:28px;color:#fff}
+.graph-teaser svg{flex:none}
+.graph-teaser h4{font:500 20px 'Fraunces';margin-bottom:6px}
+.graph-teaser p{font-size:13.5px;color:#bcd3c5;line-height:1.6;max-width:520px}
+.graph-teaser .btn2{margin-left:auto;flex:none;background:var(--gold);color:#241d08;font:600 13px 'Inter';border-radius:99px;padding:12px 22px}
+footer{padding:26px 44px;border-top:1px solid var(--line);color:#8a8168;font-size:12.5px;display:flex;gap:24px}
+</style>
+</head>
+<body>
+
+<div class="screen-label">EKRAN 1 — ANA SAYFA</div>
+<div class="screen">
+  <nav>
+    <div class="logo"><div class="mark">ق</div>Kuran'a Sor</div>
+    <div class="links"><span class="active">Sureler</span><span>Sorular</span><span>Temalar</span><span>Hakkında</span></div>
+    <div class="lang">TR ▾</div>
+  </nav>
+  <div class="hero">
+    <div class="bismillah">بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّح۪يمِ</div>
+    <h1>Sorunun cevabı yine <em>Kuran'da</em></h1>
+    <p class="sub">Ayetlere sorulan her soru, yorum yazılmadan yalnızca başka ayetlerle cevaplanır. 7.741 soru, 135.000 ayet bağlantısıyla Kuran'ı Kuran'a sorun.</p>
+    <div class="search">
+      <input placeholder="Bir soru ya da kavram arayın: “yedi gök”, “namaz”, “şeytan”…">
+      <div class="btn">Ara</div>
+    </div>
+    <div class="chips">
+      <span class="chip">Evrenlerin Rabbi nedir?</span>
+      <span class="chip">Doğru yol ne demek?</span>
+      <span class="chip">Yedi gök</span>
+      <span class="chip">Din gününün sahibi</span>
+    </div>
+    <div class="stats">
+      <div class="stat"><b>6.236</b><span>Ayet</span></div>
+      <div class="stat"><b>7.741</b><span>Soru</span></div>
+      <div class="stat"><b>135K</b><span>Ayet Bağlantısı</span></div>
+      <div class="stat"><b>29</b><span>Meal</span></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-head">
+      <h2>Sureler</h2>
+      <div class="toggle"><span class="on">Mushaf sırası</span><span>Nüzul sırası</span></div>
+    </div>
+    <div class="grid">
+      <div class="sure"><div class="no"><i>1</i></div><div><b>Fatiha</b><small>7 ayet · Mekke</small></div><div class="q">38 soru</div></div>
+      <div class="sure"><div class="no"><i>2</i></div><div><b>Bakara</b><small>286 ayet · Medine</small></div><div class="q">1.244 soru</div></div>
+      <div class="sure"><div class="no"><i>3</i></div><div><b>Ali İmran</b><small>200 ayet · Medine</small></div><div class="q">816 soru</div></div>
+      <div class="sure"><div class="no"><i>4</i></div><div><b>Nisa</b><small>176 ayet · Medine</small></div><div class="q">702 soru</div></div>
+      <div class="sure"><div class="no"><i>5</i></div><div><b>Maide</b><small>120 ayet · Medine</small></div><div class="q">511 soru</div></div>
+      <div class="sure"><div class="no"><i>6</i></div><div><b>Enam</b><small>165 ayet · Mekke</small></div><div class="q">638 soru</div></div>
+      <div class="sure"><div class="no"><i>7</i></div><div><b>Araf</b><small>206 ayet · Mekke</small></div><div class="q">744 soru</div></div>
+      <div class="sure"><div class="no"><i>8</i></div><div><b>Enfal</b><small>75 ayet · Medine</small></div><div class="q">291 soru</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="screen-label">EKRAN 2 — AYET & SORULARI</div>
+<div class="screen">
+  <nav>
+    <div class="logo"><div class="mark">ق</div>Kuran'a Sor</div>
+    <div class="links"><span class="active">Sureler</span><span>Sorular</span><span>Temalar</span><span>Hakkında</span></div>
+    <div class="lang">TR ▾</div>
+  </nav>
+  <div class="crumb">Sureler / Fatiha / <b>1:2</b></div>
+  <div class="verse-wrap">
+    <div>
+      <div class="verse-card">
+        <div class="ref">FATİHA 1:2</div>
+        <div class="arabic">اَلْحَمْدُ لِلّٰهِ رَبِّ الْعَالَم۪ينَۙ</div>
+        <div class="meal">Övgü, evrenlerin Rabbi Allah'adır.</div>
+        <div class="trans">El hamdu lillahi rabbil alemin.</div>
+      </div>
+      <div class="verse-tools">
+        <div class="tool">◁ 1:1</div>
+        <div class="tool">1:3 ▷</div>
+        <div class="tool">🔊 Dinle</div>
+        <div class="tool">☰ 29 meali karşılaştır</div>
+        <div class="tool">⧉ Paylaş</div>
+      </div>
+    </div>
+    <div class="qpanel">
+      <h3>Bu ayete sorulan sorular</h3>
+      <p class="hint">Her sorunun cevabı yalnızca başka ayetlerdir.</p>
+      <div class="qitem"><span class="n">01</span>Evrenlerin Rabbi (Rabbil alemin) nedir?<span class="go">→</span></div>
+      <div class="qitem"><span class="n">02</span>Övgü neden evrenlerin Rabbi Allah'adır?<span class="go">→</span></div>
+      <div class="qitem active"><span class="n">03</span>Neden evrenler (çoğul) kaç evren?<span class="go">→</span></div>
+      <div class="qitem"><span class="n">04</span>Sadece Allah'ı övmemiz için bazı nedenler<span class="go">→</span></div>
+      <div class="qitem"><span class="n">05</span>Rabbimizi anma ve övmeye örnekler<span class="go">→</span></div>
+    </div>
+  </div>
+  <footer><span>+ Bu ayete kendi sorunuzu gönderin</span><span>Öneri &amp; eleştiri yazın</span></footer>
+</div>
+
+<div class="screen-label">EKRAN 3 — CEVAP (AYETLE CEVAP)</div>
+<div class="screen">
+  <nav>
+    <div class="logo"><div class="mark">ق</div>Kuran'a Sor</div>
+    <div class="links"><span class="active">Sureler</span><span>Sorular</span><span>Temalar</span><span>Hakkında</span></div>
+    <div class="lang">TR ▾</div>
+  </nav>
+  <div class="answer-head">
+    <div class="q-label">Soru · Fatiha 1:2</div>
+    <h2>Neden evrenler (çoğul), kaç evren?</h2>
+    <div class="src">Cevap: <b>9 ayet</b> — yorum yok, yalnızca Kuran</div>
+  </div>
+  <div class="answers">
+    <div class="ans">
+      <div class="ref2">2:29<small>Bakara</small></div>
+      <p>Yeryüzünde her şeyi sizin için yaratan O'dur. <mark>Sonra göğe yönelip onu yedi gök olarak düzenledi.</mark> O, her şeyi Bilir.</p>
+      <div class="meta"><span>AYETE GİT →</span><span>SORULARINI GÖR</span></div>
+    </div>
+    <div class="ans">
+      <div class="ref2">41:12<small>Fussilet</small></div>
+      <p><mark>Böylece onları iki günde yedi gök olarak tamamladı</mark> ve her göğe özel yasaları bildirdi. Ve biz en aşağıdaki göğü ise lambalarla ve koruma sistemiyle donattık. Bu, Üstün ve her şeyi Bilen'in planıdır.</p>
+      <div class="meta"><span>AYETE GİT →</span><span>SORULARINI GÖR</span></div>
+    </div>
+    <div class="ans">
+      <div class="ref2">67:3<small>Mülk</small></div>
+      <p><mark>O yedi göğü kat kat yaratmıştır.</mark> Rahman'ın yaratışında her hangi bir kusur bulamazsın. Bakışlarını yönelt de bak; herhangi bir çatlak görebiliyor musun?</p>
+      <div class="meta"><span>AYETE GİT →</span><span>SORULARINI GÖR</span></div>
+    </div>
+  </div>
+  <div class="graph-teaser">
+    <svg width="120" height="84" viewBox="0 0 120 84" fill="none">
+      <circle cx="60" cy="42" r="10" fill="#b08d2f"/>
+      <circle cx="18" cy="16" r="6" fill="#e7efe9" opacity=".8"/><circle cx="102" cy="14" r="6" fill="#e7efe9" opacity=".8"/>
+      <circle cx="14" cy="66" r="6" fill="#e7efe9" opacity=".8"/><circle cx="104" cy="68" r="6" fill="#e7efe9" opacity=".8"/>
+      <circle cx="60" cy="8" r="5" fill="#e7efe9" opacity=".6"/>
+      <line x1="60" y1="42" x2="18" y2="16" stroke="#5b8871"/><line x1="60" y1="42" x2="102" y2="14" stroke="#5b8871"/>
+      <line x1="60" y1="42" x2="14" y2="66" stroke="#5b8871"/><line x1="60" y1="42" x2="104" y2="68" stroke="#5b8871"/>
+      <line x1="60" y1="42" x2="60" y2="8" stroke="#5b8871"/>
+    </svg>
+    <div>
+      <h4>Ayet ağını keşfet</h4>
+      <p>Bu 9 ayet birbirine başka sorularla da bağlı. 135.000 bağlantılık ağda bu ayetin komşularını interaktif olarak gezin.</p>
+    </div>
+    <div class="btn2">Ağı Aç →</div>
+  </div>
+</div>
+
+</body>
+</html>

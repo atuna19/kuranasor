@@ -1,0 +1,14 @@
+# Render.com için hazır yapılandırma.
+# Kullanımı: Render Dashboard -> New -> Blueprint -> bu repoyu seç.
+services:
+  - type: web
+    name: kuranasor
+    runtime: docker
+    plan: free
+    envVars:
+      - key: DATA_DIR
+        value: /data
+    disk:
+      name: kuranasor-data
+      mountPath: /data
+      sizeGB: 1

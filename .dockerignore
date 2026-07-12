@@ -1,0 +1,11 @@
+node_modules
+data/kuranasor.db
+data/kuranasor.db-shm
+data/kuranasor.db-wal
+data/feedback.db
+mockups
+.git
+.gitignore
+*.md
+BASLAT.bat
+PAYLAS.bat

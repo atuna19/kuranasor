@@ -1,0 +1,18 @@
+node_modules/
+
+# Çalışma zamanı veritabanları — repoda yalnızca sıkıştırılmış tohum (kuranasor.db.gz) tutulur.
+# Sunucu ilk açılışta bunu otomatik olarak data/kuranasor.db'ye açar.
+data/kuranasor.db
+data/kuranasor.db-shm
+data/kuranasor.db-wal
+data/feedback.db
+data/feedback.db-shm
+data/feedback.db-wal
+
+# Mockup önizleme sunucusu için önbellek/log yok ama olur da diye
+*.log
+.DS_Store
+Thumbs.db
+
+.env
+.env.local
