@@ -3,6 +3,11 @@ FROM node:20-bookworm-slim
 
 WORKDIR /app
 
+# better-sqlite3 için önceden derlenmiş ikili genelde yeterli; bulunamazsa
+# kaynaktan derleme için gerekli araçlar (yalnızca build aşamasında kalır).
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY package.json package-lock.json* ./
 RUN npm install --omit=dev
 
