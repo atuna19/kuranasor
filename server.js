@@ -55,9 +55,9 @@ const qStats = db.prepare(`
 
 const qSurahs = db.prepare(`
   SELECT s.id, s.verse_count, sn.name,
-    (SELECT COUNT(*) FROM question_verses qv
+    (SELECT COUNT(DISTINCT qv.question_id || '-' || qv.verse_id) FROM question_verses qv
       JOIN verses v ON v.id = qv.verse_id
-      WHERE v.surah_no = s.id AND qv.lang = ?) AS question_count
+      WHERE v.surah_no = s.id AND qv.lang = ? AND qv.is_active = 1) AS question_count
   FROM surahs s
   JOIN surah_names sn ON sn.surah_id = s.id AND sn.lang = ?
   ORDER BY s.id
@@ -82,7 +82,8 @@ const qBesmele = db.prepare(`
 const hasBesmele = (surahNo) => surahNo !== 1 && surahNo !== 9;
 const qSurahVerses = db.prepare(`
   SELECT v.ayah_no, m.text AS meal,
-    (SELECT COUNT(*) FROM question_verses qv WHERE qv.verse_id = v.id AND qv.lang = ?) AS qcount
+    (SELECT COUNT(DISTINCT qv.question_id) FROM question_verses qv
+      WHERE qv.verse_id = v.id AND qv.lang = ? AND qv.is_active = 1) AS qcount
   FROM verses v
   LEFT JOIN meals m ON m.verse_id = v.id AND m.lang = ?
   WHERE v.surah_no = ?
@@ -104,13 +105,16 @@ const qVerse = db.prepare(`
   WHERE v.surah_no = ? AND v.ayah_no = ?
 `);
 const qVerseById = db.prepare('SELECT surah_no, ayah_no FROM verses WHERE id = ?');
+// Kaynak veride aynı soru bir ayete iki kez bağlanmış olabiliyor (biri vurgulu biri vurgusuz);
+// GROUP BY tekilleştirir, MAX(highlight) vurgulu olanı korur (MAX null değerleri atlar).
 const qVerseQuestions = db.prepare(`
-  SELECT qv.question_id, qv.sira, qv.highlight, qt.text,
+  SELECT qv.question_id, MIN(qv.sira) AS sira, MAX(qv.highlight) AS highlight, qt.text,
     (SELECT COUNT(*) FROM answers a WHERE a.question_id = qv.question_id AND a.lang = ?) AS answer_count
   FROM question_verses qv
   JOIN question_texts qt ON qt.question_id = qv.question_id AND qt.lang = qv.lang
   WHERE qv.verse_id = ? AND qv.lang = ? AND qv.is_active = 1
-  ORDER BY qv.sira, qv.id
+  GROUP BY qv.question_id
+  ORDER BY sira, qv.question_id
 `);
 const qTranslations = db.prepare(`
   SELECT a.id AS author_id, a.name, a.description, t.text
@@ -427,11 +431,13 @@ const listFeedback = fdb.prepare('SELECT * FROM feedback ORDER BY id DESC LIMIT 
 app.post('/api/feedback', (req, res) => {
   const text = String(req.body?.text || '').trim();
   const name = String(req.body?.name || '').trim().slice(0, 80);
-  const page = String(req.body?.page || '').trim().slice(0, 200);
+  let page = String(req.body?.page || '').trim().slice(0, 200);
+  // page yalnızca site içi bir yol olabilir ("/..." ile başlamalı, "//" dış adres sayılır)
+  if (!page.startsWith('/') || page.startsWith('//')) page = '';
   if (text.length < 3 || text.length > 3000) {
     return res.status(400).json({ ok: false, error: 'Öneri metni 3-3000 karakter olmalı' });
   }
-  insFeedback.run(page, name || null, text);
+  insFeedback.run(page || null, name || null, text);
   res.json({ ok: true });
 });
 
@@ -440,6 +446,8 @@ app.get('/api/feedback', (req, res) => {
 });
 
 // ---------- statik + SPA fallback ----------
+// Tanımsız API yolları SPA fallback'ine düşmesin, düzgün 404 JSON dönsün
+app.use('/api', (req, res) => res.status(404).json({ error: 'bulunamadı' }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.get(/.*/, (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 

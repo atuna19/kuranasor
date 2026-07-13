@@ -19,7 +19,8 @@ function markText(text, highlightJson) {
     const parts = JSON.parse(highlightJson);
     for (const raw of Array.isArray(parts) ? parts : []) {
       const p = esc(String(raw).trim());
-      if (p && html.includes(p)) html = html.replace(p, `<mark>${p}</mark>`);
+      // replace'e fonksiyon veriyoruz ki metindeki $ karakterleri özel desen sayılmasın
+      if (p && html.includes(p)) html = html.replace(p, () => `<mark>${p}</mark>`);
     }
   } catch {}
   return html;
@@ -180,7 +181,7 @@ async function pageQuestion(id, s, a) {
   const d = await get(`/api/question/${id}?s=${s}&a=${a}`);
   app.innerHTML = `
   <div class="answer-head">
-    <div class="q-label">Soru · <a href="/ayet/${s}/${a}" data-link>${d.source ? esc(d.source.surah_name) + ' ' : ''}${s}:${a}</a></div>
+    <div class="q-label">Soru${Number(s) ? ` · <a href="/ayet/${s}/${a}" data-link>${d.source ? esc(d.source.surah_name) + ' ' : ''}${s}:${a}</a>` : ''}</div>
     <h1>${esc(d.text.trim())}</h1>
     <div class="src">Cevap: <b>${d.answers.length} ayet</b> — yorum yok, yalnızca Kuran</div>
     ${d.source && d.source.meal ? `
@@ -204,7 +205,7 @@ async function pageQuestion(id, s, a) {
       ${d.asked_on.filter((x) => !(x.surah_no == s && x.ayah_no == a))
         .map((x) => `<a href="/soru/${id}/${x.surah_no}/${x.ayah_no}" data-link><b>${x.surah_no}:${x.ayah_no}</b></a>`).join(' · ')}
     </div>` : ''}
-  <a class="graph-teaser" href="/ag/${s}/${a}" data-link>
+  ${!Number(s) ? '' : `<a class="graph-teaser" href="/ag/${s}/${a}" data-link>
     <svg width="90" height="64" viewBox="0 0 120 84" fill="none">
       <circle cx="60" cy="42" r="10" fill="#b08d2f"/>
       <circle cx="18" cy="16" r="6" fill="#e7efe9" opacity=".8"/><circle cx="102" cy="14" r="6" fill="#e7efe9" opacity=".8"/>
@@ -219,7 +220,7 @@ async function pageQuestion(id, s, a) {
       <small>Bu ${d.answers.length} ayet birbirine başka sorularla da bağlı. ${s}:${a} merkezli ağı interaktif gezin.</small>
     </span>
     <span class="btn2">Ağı Aç →</span>
-  </a>`;
+  </a>`}`;
 }
 
 async function pageSearch(q) {
@@ -242,9 +243,10 @@ async function pageSearch(q) {
   <div class="results">
     ${d.questions.length ? `<h2>Sorular</h2>` : ''}
     ${d.questions.map((r) => {
-      const [rs, ra] = (r.first_ref || '1:1').split(':');
+      // first_ref yoksa soru hiçbir ayete doğrudan sorulmamış (ortak cevap) — uydurma referans gösterme
+      const [rs, ra] = (r.first_ref || '0:0').split(':');
       return `<a class="qitem" href="/soru/${r.question_id}/${rs}/${ra}" data-link>
-        <span class="n">${esc(r.first_ref || '')}</span><span>${esc(r.text.trim())}</span><span class="go">→</span></a>`;
+        <span class="n">${esc(r.first_ref || '—')}</span><span>${esc(r.text.trim())}</span><span class="go">→</span></a>`;
     }).join('')}
     ${d.verses.length ? `<h2>Ayetler (meal içinde)</h2>` : ''}
     ${d.verses.map((r) => `
@@ -440,10 +442,14 @@ async function pageGraph(s, a) {
     document.getElementById('agLegend').style.display = state.hideQ ? 'none' : '';
   }
 
+  let loadToken = 0;
   async function load() {
+    const myToken = ++loadToken;
     svg.innerHTML = '';
     document.getElementById('agMeta').textContent = 'yükleniyor…';
-    state.data = await get(`/api/graph/verse/${s}/${a}?depth=${state.depth}`);
+    const data = await get(`/api/graph/verse/${s}/${a}?depth=${state.depth}`);
+    if (myToken !== loadToken) return; // bu arada yeni bir istek başladı, eskisini çizme
+    state.data = data;
     draw();
   }
 
@@ -469,6 +475,7 @@ async function pageGraph(s, a) {
     return { x: vb.x + ((e.clientX - rc.left) / rc.width) * vb.w, y: vb.y + ((e.clientY - rc.top) / rc.height) * vb.h };
   };
   svg.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return; // yalnızca sol tuşla sürükle/kaydır
     moved = 0;
     const gEl = e.target.closest('.ag-node');
     if (gEl) dragN = { node: byId.get(gEl.dataset.id), el: gEl };
