@@ -27,6 +27,14 @@ nav .links a.active{color:var(--green);font-weight:700;border-bottom:2px solid v
 .hero h1{font:300 40px/1.15 'Fraunces';letter-spacing:-.01em;max-width:760px;margin:0 auto 12px}
 .hero h1 em{font-style:italic;font-weight:500;color:var(--green)}
 .hero p.sub{color:var(--ink-2);font-size:15px;max-width:740px;margin:0 auto 22px;line-height:1.55}
+.tefsir-tagline{font:700 20px 'Inter';letter-spacing:.06em;color:var(--gold);margin-bottom:18px}
+.verseA{max-width:640px;margin:0 auto 22px;text-align:center}
+.verseA .divider{width:46px;height:3px;margin:0 auto 16px;border-radius:2px;background:linear-gradient(90deg,var(--gold),var(--green))}
+.verseA .ar{font-family:'Amiri Quran';font-size:20px;line-height:1.95;text-align:center;direction:rtl;color:var(--ink-2)}
+.verseA .ar b{font-size:27px;color:var(--gold);font-weight:700}
+.verseA .tr{margin-top:9px;font:400 16px/1.65 'Fraunces';color:var(--ink-2);text-align:center}
+.verseA .tr b{font-size:19px;color:var(--gold);font-weight:600;font-style:italic;white-space:nowrap}
+.verseA .ref{margin-top:9px;font:600 11px 'Inter';letter-spacing:.1em;color:var(--green);text-transform:uppercase}
 .search{max-width:640px;margin:0 auto;display:flex;align-items:center;background:#fff;border:1px solid var(--line);border-radius:99px;padding:8px 8px 8px 26px;box-shadow:0 12px 40px rgba(40,32,10,.08)}
 .search input{flex:1;border:0;outline:0;font:400 16px 'Inter';background:transparent;color:var(--ink);min-width:0}
 .search .btn{background:var(--green);color:#fff;border-radius:99px;padding:13px 26px;font:600 14px 'Inter'}
@@ -64,6 +72,8 @@ nav .links a.active{color:var(--green);font-weight:700;border-bottom:2px solid v
 .verse-row:hover{border-color:var(--gold)}
 .verse-row .ref2{font:600 13px 'Fraunces';color:var(--green);background:var(--green-soft);border-radius:10px;padding:8px 0;text-align:center}
 .verse-row p{font:400 16px/1.65 'Fraunces'}
+.verse-row .row-arabic{display:block;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);font-family:'Amiri Quran';font-size:20px;line-height:1.9;text-align:right}
+.verse-row .row-arabic[hidden]{display:none}
 .verse-row .q{font:600 11px 'Inter';color:var(--gold);background:var(--gold-soft);padding:4px 10px;border-radius:99px;white-space:nowrap}
 .verse-row .q.none{color:#a99;background:var(--paper-2)}
 
@@ -83,6 +93,7 @@ nav .links a.active{color:var(--green);font-weight:700;border-bottom:2px solid v
 .verse-card .ref{position:absolute;top:-17px;left:36px;background:var(--green);color:#fff;font:600 15px 'Inter';padding:8px 18px;border-radius:99px;letter-spacing:.06em}
 .arabic{font-family:'Amiri Quran';font-size:32px;line-height:2.1;text-align:right;color:var(--ink);direction:rtl}
 .meal-text{font:400 18px/1.75 'Fraunces';margin-top:22px;padding-top:22px;border-top:1px dashed var(--line)}
+.meal-text mark{background:var(--gold-soft);color:#7a5f1f;font-weight:700;border-radius:5px;padding:1px 6px}
 .trans{margin-top:14px;color:#8a8168;font-size:13.5px;font-style:italic}
 .verse-tools{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
 .tool{font:600 15px 'Inter';color:var(--ink-2);border:1px solid var(--line);border-radius:99px;padding:11px 22px;background:var(--paper);display:inline-flex;align-items:center;gap:8px}
@@ -130,6 +141,7 @@ nav .links a.active{color:var(--green);font-weight:700;border-bottom:2px solid v
 /* ---------- ARAMA ---------- */
 .results h2{font:500 24px 'Fraunces';margin:30px 0 14px}
 .results .snip mark,.results p mark{background:linear-gradient(transparent 55%, var(--gold-soft) 55%);font-weight:600}
+.results .arabic-snip{font-family:'Amiri Quran';font-size:19px;line-height:1.9;text-align:right}
 
 /* ---------- HAKKINDA ---------- */
 .about{max-width:760px;margin:40px auto;font:400 17px/1.8 'Fraunces'}

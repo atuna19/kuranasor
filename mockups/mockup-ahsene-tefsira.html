@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Ahsene Tefsira — Maket</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Amiri+Quran&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#faf7f0;--paper-2:#f3eee2;--ink:#1c1a15;--ink-2:#57503f;--line:#e5ddc9;
+--gold:#b08d2f;--gold-soft:#f0e6c8;--green:#1f4d3a;--green-2:#2d6b50;--green-soft:#e7efe9}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#dcd6c6;font-family:'Inter',sans-serif;color:var(--ink)}
+.screen{max-width:1000px;margin:40px auto;background:var(--paper);border-radius:24px;overflow:hidden;box-shadow:0 30px 80px rgba(40,32,10,.25)}
+.screen-label{max-width:1000px;margin:48px auto -28px;font:600 12px 'Inter';letter-spacing:.2em;color:#6b6350}
+nav{display:flex;align-items:center;gap:28px;padding:16px 36px;border-bottom:1px solid var(--line)}
+.logo{display:flex;align-items:center;gap:12px;font:600 24px 'Fraunces';color:var(--green)}
+.logo .mark{width:40px;height:40px;border-radius:11px;background:var(--green);color:var(--gold-soft);display:flex;align-items:center;justify-content:center;font:700 15px 'Fraunces'}
+.hero{padding:44px 40px 30px;text-align:center;background:radial-gradient(1200px 500px at 50% -200px,#fff 0%,transparent 60%)}
+.bismillah{font-family:'Amiri Quran';font-size:26px;color:var(--gold);margin-bottom:12px}
+.hero h1{font:300 40px/1.15 'Fraunces';letter-spacing:-.01em;max-width:640px;margin:0 auto 8px}
+.hero h1 em{font-style:italic;font-weight:500;color:var(--green)}
+
+/* ---------- SEÇENEK A: renk eşleşmeli / bağlayıcı çizgi ---------- */
+.verseA{max-width:640px;margin:22px auto 0;position:relative;padding-left:22px}
+.verseA::before{content:'';position:absolute;left:0;top:4px;bottom:4px;width:3px;background:linear-gradient(var(--gold),var(--green))}
+.verseA .ar{font-family:'Amiri Quran';font-size:22px;line-height:2;text-align:right;direction:rtl;color:var(--ink-2)}
+.verseA .ar b{font-size:30px;color:var(--gold);font-weight:700}
+.verseA .tr{margin-top:10px;font:400 17px/1.7 'Fraunces';color:var(--ink-2);text-align:left}
+.verseA .tr b{font-size:21px;color:var(--gold);font-weight:600;font-style:italic}
+.verseA .ref{margin-top:10px;font:600 11px 'Inter';letter-spacing:.1em;color:var(--green);text-transform:uppercase}
+
+/* ---------- SEÇENEK B: kart + ok bağlayıcı ---------- */
+.verseB{max-width:640px;margin:26px auto 0;background:linear-gradient(160deg,var(--green-soft),#fff);border:1px solid #cfe0d5;border-radius:18px;padding:26px 32px}
+.verseB .pair{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap}
+.verseB .ar-key{font-family:'Amiri Quran';font-size:32px;color:var(--green);font-weight:700}
+.verseB .arrow{color:var(--gold);font-size:22px}
+.verseB .tr-key{font:600 22px 'Fraunces';color:var(--gold);font-style:italic}
+.verseB .full{margin-top:16px;padding-top:16px;border-top:1px dashed #cfe0d5}
+.verseB .ar{font-family:'Amiri Quran';font-size:19px;line-height:1.9;text-align:right;direction:rtl;color:var(--ink-2)}
+.verseB .tr{margin-top:8px;font:400 15px/1.65 'Fraunces';color:var(--ink-2)}
+.verseB .ref{margin-top:12px;text-align:center;font:600 11px 'Inter';letter-spacing:.1em;color:var(--green);text-transform:uppercase}
+
+.hero p.sub{color:var(--ink-2);font-size:14px;max-width:600px;margin:26px auto 0;line-height:1.55}
+</style>
+</head>
+<body>
+
+<div class="screen-label">SEÇENEK A — İnce bağlayıcı çizgi (renk eşleşmesi ile)</div>
+<div class="screen">
+  <nav><div class="logo"><span class="mark">KS</span>Kuran'a Sor</div></nav>
+  <div class="hero">
+    <div class="bismillah">بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّح۪يمِ</div>
+    <h1>Sorunun cevabı yine <em>Kuran'da</em></h1>
+
+    <div class="verseA">
+      <div class="ar">وَلَا يَأْتُونَكَ بِمَثَلٍ اِلَّا جِئْنَاكَ بِالْحَقِّ وَ<b>اَحْسَنَ تَفْس۪يراً</b></div>
+      <div class="tr">Onların sana yönelttikleri her teze karşı, biz sana gerçeği ve <b>en güzel açıklamayı</b> getiririz.</div>
+      <div class="ref">Furkan 25:33</div>
+    </div>
+
+    <p class="sub">Ayetlere sorulan her soru, yorum yazılmadan yalnızca başka ayetlerle cevaplanır. 7.741 soru, 135.321 ayet bağlantısıyla Kuran'ı Kuran'a sorun.</p>
+  </div>
+</div>
+
+<div class="screen-label">SEÇENEK B — Vurgu kartı (anahtar kelime çifti + ok)</div>
+<div class="screen">
+  <nav><div class="logo"><span class="mark">KS</span>Kuran'a Sor</div></nav>
+  <div class="hero">
+    <div class="bismillah">بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّح۪يمِ</div>
+    <h1>Sorunun cevabı yine <em>Kuran'da</em></h1>
+
+    <div class="verseB">
+      <div class="pair">
+        <span class="ar-key">اَحْسَنَ تَفْس۪يراً</span>
+        <span class="arrow">⟶</span>
+        <span class="tr-key">"en güzel açıklamayı"</span>
+      </div>
+      <div class="full">
+        <div class="ar">وَلَا يَأْتُونَكَ بِمَثَلٍ اِلَّا جِئْنَاكَ بِالْحَقِّ وَاَحْسَنَ تَفْس۪يراً</div>
+        <div class="tr">Onların sana yönelttikleri her teze karşı, biz sana gerçeği ve en güzel açıklamayı getiririz.</div>
+      </div>
+      <div class="ref">Furkan 25:33</div>
+    </div>
+
+    <p class="sub">Ayetlere sorulan her soru, yorum yazılmadan yalnızca başka ayetlerle cevaplanır. 7.741 soru, 135.321 ayet bağlantısıyla Kuran'ı Kuran'a sorun.</p>
+  </div>
+</div>
+
+</body>
+</html>

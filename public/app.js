@@ -41,6 +41,13 @@ async function pageHome() {
   <div class="hero">
     <div class="bismillah">بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّح۪يمِ</div>
     <h1>Sorunun cevabı yine <em>Kuran'da</em></h1>
+    <div class="tefsir-tagline">KURAN EN GÜZEL TEFSİRDİR</div>
+    <div class="verseA">
+      <div class="divider"></div>
+      <div class="ar">وَلَا يَأْتُونَكَ بِمَثَلٍ اِلَّا جِئْنَاكَ بِالْحَقِّ وَ<b>اَحْسَنَ تَفْس۪يراً</b></div>
+      <div class="tr">Onların sana yönelttikleri her teze karşı, biz sana gerçeği ve <b>en güzel açıklamayı</b> getiririz.</div>
+      <div class="ref">Furkan 25:33</div>
+    </div>
     <p class="sub">Ayetlere sorulan her soru, yorum yazılmadan yalnızca başka ayetlerle cevaplanır.
       ${fmt(stats.questions)} soru, ${fmt(stats.links)} ayet bağlantısıyla Kuran'ı Kuran'a sorun.</p>
     <form class="search" id="searchForm">
@@ -89,19 +96,23 @@ async function pageSurah(no) {
   <div class="sure-head">
     <h1>${surah.id}. ${esc(surah.name.trim())}</h1>
     <span>${surah.verse_count} ayet${besmele ? ' + besmele' : ''}</span>
+    <button class="audio-btn" id="arToggle">🔤 Arapçasını göster</button>
     ${surah.audio_mp3 ? `<button class="audio-btn" id="audioBtn">🔊 Sureyi dinle</button>` : ''}
   </div>
   <div id="audioBox"></div>
-  <div>
+  <div id="verseList">
     ${besmele ? `
       <a class="verse-row besmele-row" href="/ayet/1/1" data-link>
         <span class="ref2">${surah.id}:0</span>
-        <p><span class="besmele-ar">${esc(besmele.arabic || '')}</span>${esc(besmele.meal || '')}</p>
+        <p>${esc(besmele.meal || '')}<span class="row-arabic" dir="rtl" hidden>${esc(besmele.arabic || '')}</span></p>
       </a>` : ''}
     ${verses.map((v) => `
       <a class="verse-row" href="/ayet/${surah.id}/${v.ayah_no}" data-link>
         <span class="ref2">${surah.id}:${v.ayah_no}</span>
-        <p>${esc(v.meal || '')}</p>
+        <p>
+          ${esc(v.meal || '')}
+          <span class="row-arabic" dir="rtl" hidden>${esc(v.arabic || '')}</span>
+        </p>
         <span class="q ${v.qcount ? '' : 'none'}">${v.qcount ? v.qcount + ' soru' : '—'}</span>
       </a>`).join('')}
   </div>`;
@@ -109,6 +120,13 @@ async function pageSurah(no) {
   if (btn) btn.addEventListener('click', () => {
     document.getElementById('audioBox').innerHTML =
       `<audio controls autoplay style="width:100%;margin-top:14px" src="${esc(surah.audio_mp3)}"></audio>`;
+  });
+  const arToggle = document.getElementById('arToggle');
+  let arShown = false;
+  arToggle.addEventListener('click', () => {
+    arShown = !arShown;
+    arToggle.textContent = arShown ? '🔤 Arapçasını gizle' : '🔤 Arapçasını göster';
+    document.querySelectorAll('#verseList .row-arabic').forEach((el) => (el.hidden = !arShown));
   });
 }
 
@@ -231,6 +249,7 @@ async function pageSearch(q) {
     return go(`/sure/${d.goto.s}`);
   }
   const snip = (t) => esc(t).replaceAll('[[', '<mark>').replaceAll(']]', '</mark>');
+  const arVerses = d.arabicVerses || [];
   app.innerHTML = `
   <div class="answer-head">
     <div class="q-label">Arama</div>
@@ -238,9 +257,15 @@ async function pageSearch(q) {
       <input id="q" value="${esc(q)}" placeholder="Kelime, cümle ya da ayet arayın: &quot;Allah&quot;, &quot;Kuran&quot;, 2:255…" autocomplete="off">
       <button class="btn" type="submit">Ara</button>
     </form>
-    <div class="src"><b>${d.questions.length}</b> soru · <b>${d.verses.length}</b> ayet bulundu${d.questions.length >= 50 || d.verses.length >= 50 ? ' (ilk 50 gösteriliyor)' : ''}</div>
+    <div class="src"><b>${d.questions.length}</b> soru · <b>${d.verses.length}</b> ayet${arVerses.length ? ` · <b>${arVerses.length}</b> Arapça ayet` : ''} bulundu${d.questions.length >= 50 || d.verses.length >= 50 ? ' (ilk 50 gösteriliyor)' : ''}</div>
   </div>
   <div class="results">
+    ${arVerses.length ? `<h2>Arapça metinde</h2>` : ''}
+    ${arVerses.map((r) => `
+      <a class="ans" href="/ayet/${r.surah_no}/${r.ayah_no}" data-link style="margin-bottom:10px">
+        <div class="ref2">${r.surah_no}:${r.ayah_no}<small>${esc((r.surah_name || '').trim())}</small></div>
+        <p class="snip arabic-snip" dir="rtl">${snip(r.snip)}</p>
+      </a>`).join('')}
     ${d.questions.length ? `<h2>Sorular</h2>` : ''}
     ${d.questions.map((r) => {
       // first_ref yoksa soru hiçbir ayete doğrudan sorulmamış (ortak cevap) — uydurma referans gösterme
@@ -254,7 +279,7 @@ async function pageSearch(q) {
         <div class="ref2">${r.surah_no}:${r.ayah_no}<small>${esc(r.surah_name || '')}</small></div>
         <p class="snip">${snip(r.snip)}</p>
       </a>`).join('')}
-    ${!d.questions.length && !d.verses.length ? `<div class="empty" style="margin-top:24px">Sonuç bulunamadı. Farklı bir kelime deneyin.</div>` : ''}
+    ${!d.questions.length && !d.verses.length && !arVerses.length ? `<div class="empty" style="margin-top:24px">Sonuç bulunamadı. Farklı bir kelime deneyin.</div>` : ''}
   </div>`;
   document.getElementById('searchForm').addEventListener('submit', (e) => {
     e.preventDefault();

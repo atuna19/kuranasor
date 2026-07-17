@@ -81,7 +81,7 @@ const qBesmele = db.prepare(`
 `);
 const hasBesmele = (surahNo) => surahNo !== 1 && surahNo !== 9;
 const qSurahVerses = db.prepare(`
-  SELECT v.ayah_no, m.text AS meal,
+  SELECT v.ayah_no, v.arabic, m.text AS meal,
     (SELECT COUNT(DISTINCT qv.question_id) FROM question_verses qv
       WHERE qv.verse_id = v.id AND qv.lang = ? AND qv.is_active = 1) AS qcount
   FROM verses v
@@ -119,7 +119,7 @@ const qVerseQuestions = db.prepare(`
 const qTranslations = db.prepare(`
   SELECT a.id AS author_id, a.name, a.description, t.text
   FROM author_translations t JOIN authors a ON a.id = t.author_id
-  WHERE t.verse_id = ? AND a.lang = ?
+  WHERE t.verse_id = ? AND a.lang = ? AND TRIM(a.name) NOT LIKE 'Edip Yüksel%'
   ORDER BY a.name
 `);
 const qFootnotes = db.prepare(`
@@ -208,11 +208,25 @@ const qSearchMeals = db.prepare(`
 `);
 const qVerseExists = db.prepare('SELECT 1 FROM verses WHERE surah_no = ? AND ayah_no = ?');
 const qSurahNames = db.prepare('SELECT surah_id, name FROM surah_names WHERE lang = ?');
+// Arapça orijinal metinde arama: dil bağımsız (Kuran metni her arayüz dilinde aynı)
+const qSearchArabic = db.prepare(`
+  SELECT fa.verse_id, snippet(fts_arabic, 0, '[[', ']]', '…', 10) AS snip,
+         v.surah_no, v.ayah_no, sn.name AS surah_name
+  FROM fts_arabic fa
+  JOIN verses v ON v.id = fa.verse_id
+  LEFT JOIN surah_names sn ON sn.surah_id = v.surah_no AND sn.lang = ?
+  WHERE fts_arabic MATCH ?
+  ORDER BY rank
+  LIMIT 50
+`);
+// Arapça harekeleri (tashkil) temizler — fts_arabic dizini de harekesiz metin üzerine kurulu
+const ARABIC_DIACRITICS = /[ً-ٰٟۖ-ۭ]/g;
+const isArabicQuery = (s) => /[؀-ۿ]/.test(s);
 
 app.get('/api/search', (req, res) => {
   const l = lang(req);
   const raw = String(req.query.q || '').trim();
-  if (!raw) return res.json({ questions: [], verses: [] });
+  if (!raw) return res.json({ questions: [], verses: [], arabicVerses: [] });
 
   // "2:255", "2/255", "2 255" gibi girişte doğrudan ayete git; "2:0" = numarasız besmele (1:1)
   const ref = raw.match(/^(\d{1,3})\s*[:\/.,\s]\s*(\d{1,3})$/);
@@ -229,10 +243,23 @@ app.get('/api/search', (req, res) => {
   const surahHit = qSurahNames.all(l).find((r) => r.name.trim().toLocaleLowerCase('tr') === lowRaw);
   if (surahHit) return res.json({ goto: { type: 'surah', s: surahHit.surah_id } });
 
+  // Arapça orijinal metinde arama: harekeler temizlenir (fts_arabic da harekesiz),
+  // dil bağımsızdır — hangi arayüz dilinde olursa olsun aynı Kuran metni aranır.
+  let arabicVerses = [];
+  if (isArabicQuery(raw)) {
+    const arTokens = raw.replace(ARABIC_DIACRITICS, '').replace(/['"()*^]/g, ' ').split(/\s+/).filter(Boolean).slice(0, 8);
+    if (arTokens.length) {
+      const arMatch = arTokens.map((t) => `"${t}"*`).join(' ');
+      try {
+        arabicVerses = qSearchArabic.all(l, arMatch);
+      } catch (e) { arabicVerses = []; }
+    }
+  }
+
   // Kelime + tam ifade araması: çok kelimeli girişte önce cümle (phrase) eşleşmesi,
   // yoksa tüm kelimeleri içerenler (önek destekli)
   const tokens = raw.replace(/['"()*^]/g, ' ').split(/\s+/).filter(Boolean).slice(0, 8);
-  if (!tokens.length) return res.json({ questions: [], verses: [] });
+  if (!tokens.length) return res.json({ questions: [], verses: [], arabicVerses });
   const phrase = tokens.map((t) => `"${t}"`).join(' ');
   const prefix = tokens.map((t) => `"${t}"*`).join(' ');
   const match = tokens.length > 1 ? `(${phrase}) OR (${prefix})` : `"${tokens[0]}"*`;
@@ -240,9 +267,10 @@ app.get('/api/search', (req, res) => {
     res.json({
       questions: qSearchQuestions.all(match, l),
       verses: qSearchMeals.all(match, l),
+      arabicVerses,
     });
   } catch (e) {
-    res.json({ questions: [], verses: [] });
+    res.json({ questions: [], verses: [], arabicVerses });
   }
 });
 

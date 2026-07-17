@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Vurgu Rengi Seçenekleri</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#faf7f0;--ink:#1c1a15;--ink-2:#57503f;--line:#e5ddc9;--gold:#b08d2f;--gold-soft:#f0e6c8;--green:#1f4d3a;--green-soft:#e7efe9}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#dcd6c6;font-family:'Inter',sans-serif;padding:40px}
+.card{max-width:560px;margin:0 auto 28px;background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:26px 30px;box-shadow:0 20px 50px rgba(40,32,10,.15)}
+.card .tag{display:inline-block;font:700 11px 'Inter';letter-spacing:.08em;color:var(--green);background:var(--green-soft);padding:5px 12px;border-radius:99px;margin-bottom:14px}
+.card p{font:400 22px/1.6 'Fraunces';color:var(--ink)}
+.card .note{margin-top:14px;font:500 12.5px 'Inter';color:var(--ink-2)}
+
+/* SEÇENEK 1 — mevcut site geneli altın gradyan (önerilen: tutarlılık) */
+.opt1 mark{background:linear-gradient(transparent 55%, var(--gold-soft) 55%);color:var(--ink);font-weight:600}
+
+/* SEÇENEK 2 — yumuşak yeşil dolgu */
+.opt2 mark{background:var(--green-soft);color:var(--green);font-weight:600;border-radius:3px;padding:0 3px}
+
+/* SEÇENEK 3 — altın dolgu rozet (daha belirgin) */
+.opt3 mark{background:var(--gold-soft);color:#7a5f1f;font-weight:700;border-radius:5px;padding:1px 6px}
+</style>
+</head>
+<body>
+
+<div class="card opt1">
+  <div class="tag">SEÇENEK 1 — Altın gradyan (site genelinde zaten kullanılan)</div>
+  <p>Övgü, <mark>evrenlerin Rabbi</mark> Allah'adır.</p>
+  <p style="margin-top:14px">Rahman ve Rahim Allah'ın ismiyle... <mark>Rahman ve Rahim Allah'ın ismiyle</mark></p>
+  <div class="note">Cevap sayfası, ağ paneli ve arama sonuçlarıyla birebir aynı — en tutarlı seçenek.</div>
+</div>
+
+<div class="card opt2">
+  <div class="tag">SEÇENEK 2 — Yumuşak yeşil dolgu</div>
+  <p>Övgü, <mark>evrenlerin Rabbi</mark> Allah'adır.</p>
+  <p style="margin-top:14px"><mark>Rahman ve Rahim Allah'ın ismiyle</mark></p>
+  <div class="note">Sitenin ikinci ana rengi (yeşil) ile; altın renkten farklılaşarak ayrı bir "vurgu kimliği" oluşturur.</div>
+</div>
+
+<div class="card opt3">
+  <div class="tag">SEÇENEK 3 — Altın dolgu rozet (daha belirgin)</div>
+  <p>Övgü, <mark>evrenlerin Rabbi</mark> Allah'adır.</p>
+  <p style="margin-top:14px"><mark>Rahman ve Rahim Allah'ın ismiyle</mark></p>
+  <div class="note">Aynı altın tonu ama tam dolgulu + yuvarlak köşe; gradyandan daha dikkat çekici.</div>
+</div>
+
+</body>
+</html>
