@@ -5,9 +5,26 @@
  */
 const fs = require('fs');
 const zlib = require('zlib');
+const crypto = require('crypto');
 const express = require('express');
 const path = require('path');
 const Database = require('better-sqlite3');
+
+// Minimal .env yükleyici (ekstra paket gerektirmez). .env dosyası git'e eklenmez.
+(function loadDotEnv() {
+  const envPath = path.join(__dirname, '.env');
+  if (!fs.existsSync(envPath)) return;
+  for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
+    const m = line.match(/^\s*([\w.-]+)\s*=\s*(.*)\s*$/);
+    if (!m) continue;
+    const key = m[1];
+    let val = m[2];
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
+    if (!(key in process.env)) process.env[key] = val;
+  }
+})();
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const DB_PATH = path.join(DATA_DIR, 'kuranasor.db');
@@ -26,6 +43,8 @@ if (!fs.existsSync(DB_PATH)) {
 }
 
 const db = new Database(DB_PATH, { readonly: true });
+// Yönetici içerik ekleme/silme işlemleri için aynı dosyaya ayrı, yazılabilir bir bağlantı
+const wdb = new Database(DB_PATH);
 // Öneriler ayrı, yazılabilir bir dosyada tutulur (kalıcı disk kullanılıyorsa DATA_DIR'a taşınabilir)
 fs.mkdirSync(DATA_DIR, { recursive: true });
 const fdb = new Database(path.join(DATA_DIR, 'feedback.db'));
@@ -36,9 +55,35 @@ fdb.exec(`CREATE TABLE IF NOT EXISTS feedback (
   text TEXT NOT NULL,
   created_at TEXT DEFAULT (datetime('now','localtime'))
 )`);
+fdb.exec(`CREATE TABLE IF NOT EXISTS qa_suggestions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  surah_no INTEGER,
+  ayah_no INTEGER,
+  question_text TEXT NOT NULL,
+  answer_refs TEXT,
+  name TEXT,
+  created_at TEXT DEFAULT (datetime('now','localtime'))
+)`);
 const app = express();
 app.use(express.json());
 const PORT = process.env.PORT || 4600;
+
+// ---------- Yönetici kimlik doğrulama ----------
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+const adminTokens = new Set();
+app.post('/api/admin/login', (req, res) => {
+  const pass = String(req.body?.password || '');
+  if (!ADMIN_PASSWORD) return res.status(500).json({ ok: false, error: 'Sunucuda ADMIN_PASSWORD ayarlanmamış.' });
+  if (pass !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, error: 'Şifre yanlış.' });
+  const token = crypto.randomBytes(24).toString('hex');
+  adminTokens.add(token);
+  res.json({ ok: true, token });
+});
+function requireAdmin(req, res, next) {
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  if (!token || !adminTokens.has(token)) return res.status(401).json({ error: 'Yetkisiz.' });
+  next();
+}
 
 const LANGS = new Set(['tr', 'az', 'en', 'de']);
 const lang = (req) => (LANGS.has(req.query.lang) ? req.query.lang : 'tr');
@@ -471,6 +516,126 @@ app.post('/api/feedback', (req, res) => {
 
 app.get('/api/feedback', (req, res) => {
   res.json({ items: listFeedback.all() });
+});
+
+// Ziyaretçi soru-cevap önerisi (yapılandırılmış, gözden geçirilmeyi bekler)
+const insSuggestion = fdb.prepare(
+  'INSERT INTO qa_suggestions (surah_no, ayah_no, question_text, answer_refs, name) VALUES (?,?,?,?,?)'
+);
+app.post('/api/suggest', (req, res) => {
+  const s = Number(req.body?.s), a = Number(req.body?.a);
+  const questionText = String(req.body?.questionText || '').trim();
+  const answerRefs = String(req.body?.answerRefs || '').trim().slice(0, 500);
+  const name = String(req.body?.name || '').trim().slice(0, 80);
+  if (!s || !a || !qVerseExists.get(s, a)) return res.status(400).json({ ok: false, error: 'Geçersiz ayet.' });
+  if (questionText.length < 5 || questionText.length > 1000) {
+    return res.status(400).json({ ok: false, error: 'Soru metni 5-1000 karakter olmalı.' });
+  }
+  insSuggestion.run(s, a, questionText, answerRefs || null, name || null);
+  res.json({ ok: true });
+});
+
+// ---------- yönetici: içerik ekleme ----------
+const NEW_ID_BASE = 9000000;
+const qVerseIdByRef = db.prepare('SELECT id FROM verses WHERE surah_no = ? AND ayah_no = ?');
+const qAdminVersePreview = db.prepare(`
+  SELECT v.arabic, m.text AS meal, sn.name AS surah_name
+  FROM verses v LEFT JOIN meals m ON m.verse_id = v.id AND m.lang = 'tr'
+  LEFT JOIN surah_names sn ON sn.surah_id = v.surah_no AND sn.lang = 'tr'
+  WHERE v.surah_no = ? AND v.ayah_no = ?
+`);
+function nextId(table) {
+  const row = wdb.prepare(`SELECT MAX(id) AS m FROM ${table}`).get();
+  const m = row && row.m ? row.m : 0;
+  return Math.max(m + 1, NEW_ID_BASE);
+}
+
+app.get('/api/admin/verse-lookup', requireAdmin, (req, res) => {
+  const s = Number(req.query.s), a = Number(req.query.a);
+  const v = qAdminVersePreview.get(s, a);
+  if (!v) return res.status(404).json({ error: 'ayet bulunamadı' });
+  res.json(v);
+});
+
+const insQuestion = wdb.prepare('INSERT INTO questions (id, answer_count) VALUES (?, ?)');
+const insQuestionText = wdb.prepare("INSERT INTO question_texts (question_id, lang, text) VALUES (?, 'tr', ?)");
+const insFtsQuestion = wdb.prepare("INSERT INTO fts_questions (text, question_id, lang) VALUES (?, ?, 'tr')");
+const delFtsQuestion = wdb.prepare("DELETE FROM fts_questions WHERE question_id = ? AND lang = 'tr'");
+const insQuestionVerse = wdb.prepare(`
+  INSERT INTO question_verses (id, lang, question_id, verse_id, surah_no, ayah_no, sira, highlight, is_active)
+  VALUES (?, 'tr', ?, ?, ?, ?, 0, ?, 1)
+`);
+const insAnswer = wdb.prepare(`
+  INSERT INTO answers (id, lang, question_id, verse_id, surah_no, ayah_no, sira, highlight, isaretlendi, is_active)
+  VALUES (?, 'tr', ?, ?, ?, ?, 0, ?, 0, 1)
+`);
+const createQuestionTx = wdb.transaction((text, sourceRefs, answerRefs) => {
+  const qid = nextId('questions');
+  insQuestion.run(qid, answerRefs.length);
+  insQuestionText.run(qid, text);
+  insFtsQuestion.run(text, qid);
+  for (const r of sourceRefs) {
+    const vid = qVerseIdByRef.get(r.s, r.a);
+    if (!vid) throw new Error(`Kaynak ayet bulunamadı: ${r.s}:${r.a}`);
+    insQuestionVerse.run(nextId('question_verses'), qid, vid.id, r.s, r.a, r.highlight ? JSON.stringify([r.highlight]) : null);
+  }
+  for (const r of answerRefs) {
+    const vid = qVerseIdByRef.get(r.s, r.a);
+    if (!vid) throw new Error(`Cevap ayeti bulunamadı: ${r.s}:${r.a}`);
+    insAnswer.run(nextId('answers'), qid, vid.id, r.s, r.a, r.highlight ? JSON.stringify([r.highlight]) : null);
+  }
+  return qid;
+});
+
+app.post('/api/admin/question', requireAdmin, (req, res) => {
+  const text = String(req.body?.text || '').trim();
+  const sourceRefs = Array.isArray(req.body?.sourceRefs) ? req.body.sourceRefs : [];
+  const answerRefs = Array.isArray(req.body?.answerRefs) ? req.body.answerRefs : [];
+  if (text.length < 5 || text.length > 1000) return res.status(400).json({ error: 'Soru metni 5-1000 karakter olmalı.' });
+  if (!sourceRefs.length) return res.status(400).json({ error: 'En az bir kaynak ayet gerekli.' });
+  if (!answerRefs.length) return res.status(400).json({ error: 'En az bir cevap ayeti gerekli.' });
+  try {
+    const qid = createQuestionTx(text, sourceRefs, answerRefs);
+    res.json({ ok: true, id: qid });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+const qAdminQuestionList = db.prepare(`
+  SELECT q.id, qt.text,
+    (SELECT GROUP_CONCAT(qv.surah_no || ':' || qv.ayah_no) FROM question_verses qv WHERE qv.question_id = q.id AND qv.lang='tr') AS sources,
+    (SELECT COUNT(*) FROM answers a WHERE a.question_id = q.id AND a.lang='tr') AS answer_count
+  FROM questions q
+  JOIN question_texts qt ON qt.question_id = q.id AND qt.lang = 'tr'
+  WHERE q.id >= ${NEW_ID_BASE}
+  ORDER BY q.id DESC
+`);
+app.get('/api/admin/questions', requireAdmin, (req, res) => {
+  res.json({ items: qAdminQuestionList.all() });
+});
+
+const delQuestionTx = wdb.transaction((qid) => {
+  wdb.prepare('DELETE FROM question_verses WHERE question_id = ?').run(qid);
+  wdb.prepare('DELETE FROM answers WHERE question_id = ?').run(qid);
+  wdb.prepare('DELETE FROM question_texts WHERE question_id = ?').run(qid);
+  wdb.prepare('DELETE FROM questions WHERE id = ?').run(qid);
+  delFtsQuestion.run(qid);
+});
+app.delete('/api/admin/question/:id', requireAdmin, (req, res) => {
+  const qid = Number(req.params.id);
+  if (!qid || qid < NEW_ID_BASE) return res.status(400).json({ error: 'Yalnızca eklenen sorular silinebilir.' });
+  delQuestionTx(qid);
+  res.json({ ok: true });
+});
+
+const qAdminSuggestions = fdb.prepare('SELECT * FROM qa_suggestions ORDER BY id DESC LIMIT 300');
+app.get('/api/admin/suggestions', requireAdmin, (req, res) => {
+  res.json({ items: qAdminSuggestions.all() });
+});
+app.delete('/api/admin/suggestion/:id', requireAdmin, (req, res) => {
+  fdb.prepare('DELETE FROM qa_suggestions WHERE id = ?').run(Number(req.params.id));
+  res.json({ ok: true });
 });
 
 // ---------- statik + SPA fallback ----------

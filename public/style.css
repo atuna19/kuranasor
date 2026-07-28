@@ -151,6 +151,41 @@ nav .links a.active{color:var(--green);font-weight:700;border-bottom:2px solid v
 
 footer{padding:26px 44px;border-top:1px solid var(--line);color:#8a8168;font-size:12.5px;margin-top:60px;text-align:center}
 
+/* ---------- YÖNETİCİ PANELİ ---------- */
+.admin-login{max-width:340px;margin:60px auto;text-align:center;display:flex;flex-direction:column;gap:12px}
+.admin-login h1{font:400 28px 'Fraunces';color:var(--green)}
+.admin-login .hint{color:#8a8168;font-size:13px;margin-bottom:6px}
+.admin-login input{border:1px solid var(--line);border-radius:10px;padding:12px 16px;font:400 14px 'Inter';outline:none}
+.admin-login input:focus{border-color:var(--gold)}
+.admin-err{background:#fbe9e7;color:#9a3b2e;border-radius:8px;padding:8px 12px;font-size:12.5px}
+.admin-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px 26px;margin:18px 0}
+.admin-card h2{font:500 20px 'Fraunces';color:var(--green);margin-bottom:14px}
+.admin-count{font:600 12px 'Inter';color:var(--gold);background:var(--gold-soft);padding:3px 10px;border-radius:99px;margin-left:6px;vertical-align:middle}
+.admin-label{display:block;font:600 11.5px 'Inter';letter-spacing:.06em;color:var(--ink-2);text-transform:uppercase;margin-bottom:8px}
+.admin-card textarea,.admin-card input,.suggest-box textarea,.suggest-box input{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 14px;font:400 14.5px 'Inter';outline:none;margin-bottom:8px}
+.admin-card textarea{height:80px;resize:vertical}
+.admin-card input:focus,.admin-card textarea:focus,.suggest-box input:focus,.suggest-box textarea:focus{border-color:var(--gold)}
+.source-row,.answer-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:start;margin-bottom:4px}
+.source-row .ref-preview,.answer-row .ref-preview{grid-column:1/3;font-size:12px;color:#8a8168;margin:-4px 0 4px}
+.source-row .ref-preview.ok,.answer-row .ref-preview.ok{color:var(--green)}
+.source-row .ref-preview.err,.answer-row .ref-preview.err{color:#9a3b2e}
+.row-del{background:var(--paper-2);color:var(--ink-2);border-radius:8px;width:38px;height:38px;font-size:16px}
+.row-del:hover{background:#fbe9e7;color:#9a3b2e}
+.admin-add{font:600 12.5px 'Inter';color:var(--green);background:var(--green-soft);border-radius:99px;padding:8px 16px;margin-top:4px}
+.admin-msg{font-size:13px;min-height:18px;margin-top:8px}
+.admin-msg.ok{color:var(--green)}
+.admin-msg.err{color:#9a3b2e}
+.admin-row{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:14px 0;border-bottom:1px solid var(--line);font-size:14px}
+.admin-row:last-child{border-bottom:none}
+.admin-row small{color:#8a8168;display:block;margin-top:2px}
+.admin-del,.admin-del-sugg{font:600 12px 'Inter';color:#9a3b2e;background:#fbe9e7;border-radius:99px;padding:7px 14px;white-space:nowrap}
+.admin-fill{font:600 12px 'Inter';color:var(--green);background:var(--green-soft);border-radius:99px;padding:7px 14px;white-space:nowrap;margin-right:8px}
+.admin-row-btns{display:flex;gap:8px;flex:none}
+.sugg-answers{font-size:12.5px;color:var(--gold);margin-top:3px}
+.suggest-toggle{margin-top:14px;font:600 12.5px 'Inter';color:var(--green);background:var(--green-soft);border-radius:99px;padding:9px 18px}
+.suggest-box{margin-top:12px;padding-top:14px;border-top:1px dashed var(--line)}
+.suggest-box .hint{color:#8a8168;font-size:12.5px;margin-bottom:10px}
+
 /* ---------- AYET AĞI ---------- */
 .ag-head{display:flex;align-items:center;gap:16px;padding:22px 0 14px;flex-wrap:wrap}
 .ag-head h1{font:400 34px 'Fraunces';color:var(--green)}
@@ -167,7 +202,7 @@ footer{padding:26px 44px;border-top:1px solid var(--line);color:#8a8168;font-siz
 .ag-wrap{display:grid;grid-template-columns:1fr 330px;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#fff}
 @media(max-width:960px){.ag-wrap{grid-template-columns:1fr}.ag-panel{border-left:0!important;border-top:1px solid var(--line)}}
 .ag-canvas{position:relative;height:600px;background:radial-gradient(700px 400px at 45% 45%,#fff 0%,var(--paper) 75%)}
-.ag-canvas svg{width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+.ag-canvas svg{width:100%;height:100%;display:block;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;-moz-user-select:none}
 .ag-canvas svg:active{cursor:grabbing}
 .ag-node{cursor:pointer}
 .ag-node circle:hover{stroke:#b08d2f;stroke-width:3}
@@ -213,6 +248,11 @@ footer{padding:26px 44px;border-top:1px solid var(--line);color:#8a8168;font-siz
 .explore-strip .es-ico{font-size:18px}
 .explore-strip .es-go{margin-left:auto;background:var(--gold);color:#241d08;border-radius:99px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-weight:700}
 .explore-strip:hover .es-go{background:#c9a13d}
+.resume-strip{display:flex;align-items:center;gap:14px;background:linear-gradient(120deg,var(--gold) 0%,#8f7024 100%);color:#fff;border-radius:14px;padding:13px 22px;margin-top:20px;font:400 14.5px 'Inter'}
+.resume-strip b{font-weight:600}
+.resume-strip .rs-ico{font-size:18px}
+.resume-strip .rs-go{margin-left:auto;background:var(--green);color:#fff;border-radius:99px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-weight:700}
+.resume-strip:hover .rs-go{background:var(--green-2)}
 
 /* soru sayfası teaser */
 .graph-teaser{margin:26px 0 10px;background:linear-gradient(120deg,var(--green) 0%,#143526 100%);border-radius:18px;padding:24px 30px;display:flex;align-items:center;gap:24px;color:#fff;max-width:960px}

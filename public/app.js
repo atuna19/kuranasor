@@ -32,12 +32,33 @@ const get = async (url) => {
   return r.json();
 };
 
+// ---------- OKUMA KONUMU (düz okuma takibi) ----------
+// Yalnızca "düz okuma" sayılan gezinmelerde (sure listesinden ayet açma, ◁/▷ ile ilerleme)
+// güncellenir; arama/ağ/soru-cevap gibi keşif linkleri (data-linear olmayan) dokunmaz.
+const READ_KEY = 'kuranasor_lastread';
+let pendingLinearNav = false;
+function saveReadingPosition(s, a, surahName) {
+  try {
+    localStorage.setItem(READ_KEY, JSON.stringify({ s, a, surahName: (surahName || '').trim(), ts: Date.now() }));
+  } catch {}
+}
+function getReadingPosition() {
+  try { return JSON.parse(localStorage.getItem(READ_KEY) || 'null'); } catch { return null; }
+}
+
 // ---------- SAYFALAR ----------
 
 async function pageHome() {
   const { stats, surahs } = await get('/api/surahs');
   const fmt = (n) => n.toLocaleString('tr-TR');
+  const lastRead = getReadingPosition();
   app.innerHTML = `
+  ${lastRead ? `
+  <a class="resume-strip" href="/ayet/${lastRead.s}/${lastRead.a}" data-link data-linear="1">
+    <span class="rs-ico">📖</span>
+    <span><b>Kaldığınız yer:</b> ${esc(lastRead.surahName)} ${lastRead.s}:${lastRead.a} — Devam Et</span>
+    <span class="rs-go">→</span>
+  </a>` : ''}
   <div class="hero">
     <div class="bismillah">بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّح۪يمِ</div>
     <h1>Sorunun cevabı yine <em>Kuran'da</em></h1>
@@ -107,7 +128,7 @@ async function pageSurah(no) {
         <p>${esc(besmele.meal || '')}<span class="row-arabic" dir="rtl" hidden>${esc(besmele.arabic || '')}</span></p>
       </a>` : ''}
     ${verses.map((v) => `
-      <a class="verse-row" href="/ayet/${surah.id}/${v.ayah_no}" data-link>
+      <a class="verse-row" href="/ayet/${surah.id}/${v.ayah_no}" data-link data-linear="1">
         <span class="ref2">${surah.id}:${v.ayah_no}</span>
         <p>
           ${esc(v.meal || '')}
@@ -133,6 +154,9 @@ async function pageSurah(no) {
 async function pageVerse(s, a) {
   const d = await get(`/api/verse/${s}/${a}`);
   const { verse, surah, besmele, questions, translations, prev, next } = d;
+  // Yalnızca düz okuma sayılan bir bağlantıyla (sure listesi ya da ◁/▷) buraya gelindiyse konumu kaydet
+  if (pendingLinearNav) saveReadingPosition(s, a, surah.name);
+  pendingLinearNav = false;
   app.innerHTML = `
   <div class="crumb"><a href="/" data-link>Sureler</a> / <a href="/sure/${s}" data-link>${esc(surah.name.trim())}</a> / <b>${s}:${a}</b></div>
   <div class="verse-wrap">
@@ -145,8 +169,8 @@ async function pageVerse(s, a) {
         ${verse.transcription ? `<div class="trans">${esc(verse.transcription)}</div>` : ''}
       </div>
       <div class="verse-tools">
-        ${prev ? `<a class="tool" href="/ayet/${prev.surah_no}/${prev.ayah_no}" data-link>◁ ${prev.surah_no}:${prev.ayah_no}</a>` : ''}
-        ${next ? `<a class="tool" href="/ayet/${next.surah_no}/${next.ayah_no}" data-link>${next.surah_no}:${next.ayah_no} ▷</a>` : ''}
+        ${prev ? `<a class="tool" href="/ayet/${prev.surah_no}/${prev.ayah_no}" data-link data-linear="1">◁ ${prev.surah_no}:${prev.ayah_no}</a>` : ''}
+        ${next ? `<a class="tool" href="/ayet/${next.surah_no}/${next.ayah_no}" data-link data-linear="1">${next.surah_no}:${next.ayah_no} ▷</a>` : ''}
         ${translations.length ? `<button class="tool" id="cmpBtn">☰ ${translations.length} meali karşılaştır</button>` : ''}
         <a class="tool" href="/ag/${s}/${a}" data-link>🕸 Ağı gör</a>
         ${verse.juz ? `<span class="tool">Cüz ${verse.juz}</span>` : ''}
@@ -173,6 +197,15 @@ async function pageVerse(s, a) {
           <span>${esc(q.text.trim())}</span>
           <span class="go">→</span>
         </a>`).join('') : `<div class="empty">Bu ayete henüz soru eklenmemiş.</div>`}
+      <button type="button" class="suggest-toggle" id="suggestToggle">+ Bu ayete soru-cevap öner</button>
+      <div class="suggest-box" id="suggestBox" hidden>
+        <p class="hint">Sorunuz ve bunu cevapladığını düşündüğünüz ayet(ler) incelenip uygun görülürse eklenir.</p>
+        <textarea id="sgQuestion" placeholder="Sormak istediğiniz soru…"></textarea>
+        <input id="sgAnswers" placeholder="Cevap olduğunu düşündüğünüz ayet(ler), örn: 2:255, 3:2">
+        <input id="sgName" placeholder="Adınız (isteğe bağlı)" maxlength="80">
+        <button type="button" class="btn" id="sgSend">Gönder</button>
+        <div class="admin-msg" id="sgMsg"></div>
+      </div>
     </div>
   </div>`;
   // Soru listesine gelince ayetin ilgili bölümü vurgulansın
@@ -192,6 +225,34 @@ async function pageVerse(s, a) {
     const el = document.getElementById('cmp');
     el.style.display = el.style.display === 'none' ? 'block' : 'none';
     if (el.style.display === 'block') el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  document.getElementById('suggestToggle').addEventListener('click', () => {
+    const box = document.getElementById('suggestBox');
+    box.hidden = !box.hidden;
+  });
+  document.getElementById('sgSend').addEventListener('click', async () => {
+    const msg = document.getElementById('sgMsg');
+    const questionText = document.getElementById('sgQuestion').value.trim();
+    if (questionText.length < 5) { msg.textContent = 'Lütfen sorunuzu yazın (en az 5 karakter).'; msg.className = 'admin-msg err'; return; }
+    const r = await fetch('/api/suggest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        s, a, questionText,
+        answerRefs: document.getElementById('sgAnswers').value.trim(),
+        name: document.getElementById('sgName').value.trim(),
+      }),
+    });
+    if (r.ok) {
+      msg.textContent = 'Teşekkürler, öneriniz iletildi!';
+      msg.className = 'admin-msg ok';
+      document.getElementById('sgQuestion').value = '';
+      document.getElementById('sgAnswers').value = '';
+    } else {
+      const j = await r.json().catch(() => ({}));
+      msg.textContent = j.error || 'Gönderilemedi, tekrar deneyin.';
+      msg.className = 'admin-msg err';
+    }
   });
 }
 
@@ -639,6 +700,194 @@ async function pageExplore() {
   </div>`;
 }
 
+// ---------- YÖNETİCİ PANELİ ----------
+const ADMIN_TOKEN_KEY = 'kuranasor_admin_token';
+async function adminFetch(url, opts = {}) {
+  const token = sessionStorage.getItem(ADMIN_TOKEN_KEY);
+  const headers = { ...(opts.headers || {}), Authorization: 'Bearer ' + (token || '') };
+  const r = await fetch(url, { ...opts, headers });
+  if (r.status === 401) { sessionStorage.removeItem(ADMIN_TOKEN_KEY); throw new Error('AUTH'); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  return j;
+}
+function refRow(cls, placeholder, ref, highlight) {
+  return `<div class="${cls}-row">
+    <input class="ref-input" placeholder="${placeholder}" value="${esc(ref || '')}">
+    <input class="hl-input" placeholder="Vurgulanacak cümle (opsiyonel)" value="${esc(highlight || '')}">
+    <button type="button" class="row-del">×</button>
+    <div class="ref-preview"></div>
+  </div>`;
+}
+function parseRef(str) {
+  const m = String(str || '').trim().match(/^(\d{1,3})\s*:\s*(\d{1,3})$/);
+  return m ? { s: Number(m[1]), a: Number(m[2]) } : null;
+}
+function wireRefRow(row) {
+  const input = row.querySelector('.ref-input');
+  const preview = row.querySelector('.ref-preview');
+  row.querySelector('.row-del').addEventListener('click', () => row.remove());
+  input.addEventListener('blur', async () => {
+    const ref = parseRef(input.value);
+    if (!ref) { preview.textContent = input.value.trim() ? 'Geçersiz format (örn. 2:255)' : ''; preview.className = 'ref-preview err'; return; }
+    try {
+      const v = await adminFetch(`/api/admin/verse-lookup?s=${ref.s}&a=${ref.a}`);
+      preview.textContent = `${(v.surah_name || '').trim()} ${ref.s}:${ref.a} — ${(v.meal || '').trim().slice(0, 70)}`;
+      preview.className = 'ref-preview ok';
+    } catch { preview.textContent = 'Ayet bulunamadı'; preview.className = 'ref-preview err'; }
+  });
+}
+
+async function pageAdmin() {
+  if (!sessionStorage.getItem(ADMIN_TOKEN_KEY)) return renderAdminLogin();
+  try { await renderAdminPanel(); }
+  catch (e) {
+    if (e.message === 'AUTH') return renderAdminLogin();
+    app.innerHTML = `<div class="empty" style="margin-top:40px">Hata: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderAdminLogin(errorMsg) {
+  app.innerHTML = `
+  <div class="admin-login">
+    <h1>Yönetici Girişi</h1>
+    <p class="hint">Bu sayfa yalnızca site sahibi içindir.</p>
+    ${errorMsg ? `<div class="admin-err">${esc(errorMsg)}</div>` : ''}
+    <input type="password" id="adminPass" placeholder="Şifre" autocomplete="current-password">
+    <button class="btn" id="adminLoginBtn">Giriş</button>
+  </div>`;
+  const doLogin = async () => {
+    const password = document.getElementById('adminPass').value;
+    const r = await fetch('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
+    const j = await r.json();
+    if (j.ok) { sessionStorage.setItem(ADMIN_TOKEN_KEY, j.token); pageAdmin(); }
+    else renderAdminLogin(j.error || 'Giriş başarısız.');
+  };
+  document.getElementById('adminLoginBtn').addEventListener('click', doLogin);
+  document.getElementById('adminPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+}
+
+async function renderAdminPanel() {
+  const [qData, sData] = await Promise.all([adminFetch('/api/admin/questions'), adminFetch('/api/admin/suggestions')]);
+  app.innerHTML = `
+  <div class="answer-head">
+    <div class="q-label">Yönetici Paneli</div>
+    <h1>Soru-Cevap Yönetimi</h1>
+  </div>
+  <div class="admin-card">
+    <h2>Yeni Soru-Cevap Ekle</h2>
+    <label class="admin-label">Kaynak ayet</label>
+    <div id="sourceRows">${refRow('source', 'Ayet (örn. 2:255)')}</div>
+    <button type="button" class="admin-add" id="addSource">+ Kaynak ayet ekle</button>
+    <label class="admin-label" style="margin-top:16px">Soru metni</label>
+    <textarea id="qText" placeholder="Soruyu yazın…"></textarea>
+    <label class="admin-label" style="margin-top:16px">Cevap ayetleri</label>
+    <div id="answerRows">${refRow('answer', 'Ayet (örn. 3:2)')}</div>
+    <button type="button" class="admin-add" id="addAnswer">+ Cevap ayeti ekle</button>
+    <div id="adminFormMsg" class="admin-msg"></div>
+    <button class="btn" id="saveQuestion" style="margin-top:16px">Kaydet</button>
+  </div>
+  <div class="admin-card">
+    <h2>Eklediğim Sorular <span class="admin-count">${qData.items.length}</span></h2>
+    <div id="myQuestions">
+      ${qData.items.length ? qData.items.map((q) => `
+        <div class="admin-row" data-id="${q.id}">
+          <div><b>${esc((q.sources || '').split(',')[0] || '')}</b> — ${esc(q.text.trim())}
+            <small>(${q.answer_count} cevap ayeti)</small></div>
+          <button type="button" class="admin-del" data-qid="${q.id}">Sil</button>
+        </div>`).join('') : `<div class="empty">Henüz eklenmedi.</div>`}
+    </div>
+  </div>
+  <div class="admin-card">
+    <h2>Gelen Soru-Cevap Önerileri <span class="admin-count">${sData.items.length}</span></h2>
+    <div id="suggestions">
+      ${sData.items.length ? sData.items.map((s) => `
+        <div class="admin-row admin-sugg" data-id="${s.id}">
+          <div>
+            <b>${s.surah_no}:${s.ayah_no}</b> — ${esc(s.question_text.trim())}
+            ${s.answer_refs ? `<div class="sugg-answers">Önerilen cevaplar: ${esc(s.answer_refs)}</div>` : ''}
+            <small>${esc(s.name || 'İsimsiz')} · ${esc(s.created_at || '')}</small>
+          </div>
+          <div class="admin-row-btns">
+            <button type="button" class="admin-fill" data-sid="${s.id}">Forma Doldur</button>
+            <button type="button" class="admin-del-sugg" data-sid="${s.id}">Sil</button>
+          </div>
+        </div>`).join('') : `<div class="empty">Henüz öneri yok.</div>`}
+    </div>
+  </div>`;
+
+  document.querySelectorAll('.source-row, .answer-row').forEach(wireRefRow);
+  document.getElementById('addSource').addEventListener('click', () => {
+    const div = document.createElement('div');
+    div.innerHTML = refRow('source', 'Ayet (örn. 2:255)');
+    const row = div.firstElementChild;
+    document.getElementById('sourceRows').appendChild(row);
+    wireRefRow(row);
+  });
+  document.getElementById('addAnswer').addEventListener('click', () => {
+    const div = document.createElement('div');
+    div.innerHTML = refRow('answer', 'Ayet (örn. 3:2)');
+    const row = div.firstElementChild;
+    document.getElementById('answerRows').appendChild(row);
+    wireRefRow(row);
+  });
+
+  document.getElementById('saveQuestion').addEventListener('click', async () => {
+    const msg = document.getElementById('adminFormMsg');
+    const readRows = (sel) => [...document.querySelectorAll(sel)].map((row) => {
+      const ref = parseRef(row.querySelector('.ref-input').value);
+      const highlight = row.querySelector('.hl-input').value.trim();
+      return ref ? { ...ref, highlight: highlight || undefined } : null;
+    }).filter(Boolean);
+    const sourceRefs = readRows('.source-row');
+    const answerRefs = readRows('.answer-row');
+    const text = document.getElementById('qText').value.trim();
+    if (!sourceRefs.length || !answerRefs.length || text.length < 5) {
+      msg.textContent = 'Kaynak ayet, en az bir cevap ayeti ve soru metni (en az 5 karakter) gerekli.';
+      msg.className = 'admin-msg err';
+      return;
+    }
+    try {
+      await adminFetch('/api/admin/question', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, sourceRefs, answerRefs }),
+      });
+      msg.textContent = 'Kaydedildi!';
+      msg.className = 'admin-msg ok';
+      setTimeout(() => renderAdminPanel(), 500);
+    } catch (e) {
+      msg.textContent = e.message === 'AUTH' ? 'Oturum sona ermiş, tekrar giriş yapın.' : e.message;
+      msg.className = 'admin-msg err';
+      if (e.message === 'AUTH') pageAdmin();
+    }
+  });
+
+  document.querySelectorAll('.admin-del').forEach((btn) => btn.addEventListener('click', async () => {
+    if (!confirm('Bu soru ve bağlantılı cevapları silinsin mi?')) return;
+    await adminFetch(`/api/admin/question/${btn.dataset.qid}`, { method: 'DELETE' });
+    renderAdminPanel();
+  }));
+  document.querySelectorAll('.admin-del-sugg').forEach((btn) => btn.addEventListener('click', async () => {
+    await adminFetch(`/api/admin/suggestion/${btn.dataset.sid}`, { method: 'DELETE' });
+    renderAdminPanel();
+  }));
+  document.querySelectorAll('.admin-fill').forEach((btn) => btn.addEventListener('click', () => {
+    const s = sData.items.find((x) => String(x.id) === btn.dataset.sid);
+    if (!s) return;
+    document.querySelector('.source-row .ref-input').value = `${s.surah_no}:${s.ayah_no}`;
+    document.querySelector('.source-row .ref-input').dispatchEvent(new Event('blur'));
+    document.getElementById('qText').value = s.question_text;
+    const foundRefs = (s.answer_refs || '').match(/\d{1,3}\s*:\s*\d{1,3}/g) || [];
+    document.getElementById('answerRows').innerHTML = foundRefs.length
+      ? foundRefs.map((r) => refRow('answer', 'Ayet (örn. 3:2)', r.replace(/\s+/g, ''))).join('')
+      : refRow('answer', 'Ayet (örn. 3:2)');
+    document.querySelectorAll('.answer-row').forEach(wireRefRow);
+    document.querySelectorAll('.answer-row .ref-input').forEach((i) => i.dispatchEvent(new Event('blur')));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }));
+}
+
 async function pageFeedbackList() {
   const d = await get('/api/feedback');
   app.innerHTML = `
@@ -713,9 +962,10 @@ document.addEventListener('click', (e) => {
   // Ctrl/Cmd/Shift + tık ya da orta tuş: tarayıcının "yeni sekmede aç" davranışına karışma
   if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0) return;
   e.preventDefault();
+  pendingLinearNav = link.dataset.linear === '1';
   go(link.getAttribute('href'));
 });
-window.addEventListener('popstate', render);
+window.addEventListener('popstate', () => { pendingLinearNav = false; render(); });
 
 function setActiveNav(path) {
   const active = path === '/hakkinda' ? '/hakkinda'
@@ -743,6 +993,7 @@ async function render() {
     else if (path === '/kesfet') await pageExplore();
     else if (path === '/ara') await pageSearch(params.get('q') || '');
     else if (path === '/oneriler') await pageFeedbackList();
+    else if (path === '/yonet') await pageAdmin();
     else if (path === '/hakkinda') pageAbout();
     else await pageHome();
   } catch (err) {
