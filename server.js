@@ -109,7 +109,8 @@ const qStats = db.prepare(`
   SELECT
     (SELECT COUNT(*) FROM verses) AS verses,
     (SELECT COUNT(*) FROM questions) AS questions,
-    (SELECT COUNT(*) FROM answers WHERE lang='tr') AS links,
+    -- aynı soru-ayet çifti kaynak veride birden çok kez kayıtlı olabiliyor, tekil sayılır
+    (SELECT COUNT(*) FROM (SELECT 1 FROM answers WHERE lang='tr' AND is_active = 1 GROUP BY question_id, verse_id)) AS links,
     (SELECT COUNT(*) FROM authors) AS authors
 `);
 
@@ -123,9 +124,12 @@ const qSurahs = db.prepare(`
   ORDER BY s.id
 `);
 
+// Tekil bağlantı sayımı ~65 ms sürüyor; veri yalnızca yönetici ekleme/silmesiyle değiştiği için önbelleklenir
+let statsCache = null;
 app.get('/api/surahs', (req, res) => {
   const l = lang(req);
-  res.json({ stats: qStats.get(), surahs: qSurahs.all(l, l) });
+  statsCache ??= qStats.get();
+  res.json({ stats: statsCache, surahs: qSurahs.all(l, l) });
 });
 
 const qSurah = db.prepare(`
@@ -218,6 +222,28 @@ const qAnswers = db.prepare(`
   WHERE ans.question_id = ? AND ans.lang = ? AND ans.is_active = 1
   ORDER BY ans.verse_id
 `);
+const highlightParts = (json) => {
+  try {
+    const parts = JSON.parse(json || 'null');
+    return Array.isArray(parts) ? parts.map((p) => String(p).trim()).filter(Boolean) : [];
+  } catch { return []; }
+};
+// Kaynak veride aynı cevap ayeti bir soruya birden çok kez bağlanmış olabiliyor (çoğunda
+// ayetin farklı parçaları vurgulu). Ayet başına tek satıra indirip vurgu parçalarını birleştiriyoruz;
+// başka bir parçanın içinde kalan parça atılır ki meal metninde vurgu bölünmesin.
+function dedupeAnswers(rows) {
+  const byVerse = new Map();
+  for (const r of rows) {
+    if (!byVerse.has(r.verse_id)) byVerse.set(r.verse_id, []);
+    byVerse.get(r.verse_id).push(r);
+  }
+  return [...byVerse.values()].map((dups) => {
+    if (dups.length === 1) return dups[0];
+    const parts = [...new Set(dups.flatMap((d) => highlightParts(d.highlight)))];
+    const kept = parts.filter((p) => !parts.some((o) => o !== p && o.includes(p)));
+    return { ...dups[0], highlight: kept.length ? JSON.stringify(kept) : null };
+  });
+}
 const qAskedOn = db.prepare(`
   SELECT DISTINCT v.surah_no, v.ayah_no FROM question_verses qv
   JOIN verses v ON v.id = qv.verse_id
@@ -243,7 +269,7 @@ app.get('/api/question/:id', (req, res) => {
     text: text.text,
     source,
     asked_on: qAskedOn.all(id, l),
-    answers: qAnswers.all(id, l),
+    answers: dedupeAnswers(qAnswers.all(id, l)),
   });
 });
 
@@ -462,6 +488,10 @@ app.get('/api/graph/verse/:s/:a', (req, res) => {
 
 // En bağlantılı ayetler (keşif sayfası) — dil başına bir kez hesaplanır
 const hubCache = {};
+function invalidateCaches() {
+  statsCache = null;
+  for (const k of Object.keys(hubCache)) delete hubCache[k];
+}
 app.get('/api/hubs', (req, res) => {
   const l = lang(req);
   if (!hubCache[l]) {
@@ -607,12 +637,15 @@ const createQuestionTx = wdb.transaction((text, sourceRefs, answerRefs) => {
 app.post('/api/admin/question', requireAdmin, (req, res) => {
   const text = String(req.body?.text || '').trim();
   const sourceRefs = Array.isArray(req.body?.sourceRefs) ? req.body.sourceRefs : [];
-  const answerRefs = Array.isArray(req.body?.answerRefs) ? req.body.answerRefs : [];
+  // Aynı cevap ayeti formda iki kez girildiyse tek kayıt olarak eklenir (ilk satır geçerli)
+  const answerRefs = (Array.isArray(req.body?.answerRefs) ? req.body.answerRefs : [])
+    .filter((r, i, all) => all.findIndex((o) => Number(o?.s) === Number(r?.s) && Number(o?.a) === Number(r?.a)) === i);
   if (text.length < 5 || text.length > 1000) return res.status(400).json({ error: 'Soru metni 5-1000 karakter olmalı.' });
   if (!sourceRefs.length) return res.status(400).json({ error: 'En az bir kaynak ayet gerekli.' });
   if (!answerRefs.length) return res.status(400).json({ error: 'En az bir cevap ayeti gerekli.' });
   try {
     const qid = createQuestionTx(text, sourceRefs, answerRefs);
+    invalidateCaches();
     res.json({ ok: true, id: qid });
   } catch (e) {
     res.status(400).json({ error: e.message });
@@ -643,6 +676,7 @@ app.delete('/api/admin/question/:id', requireAdmin, (req, res) => {
   const qid = Number(req.params.id);
   if (!qid || qid < NEW_ID_BASE) return res.status(400).json({ error: 'Yalnızca eklenen sorular silinebilir.' });
   delQuestionTx(qid);
+  invalidateCaches();
   res.json({ ok: true });
 });
 

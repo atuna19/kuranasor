@@ -2,7 +2,7 @@
 
 Ayetlere sorulan sorulara, yorum yazılmadan yalnızca başka ayetlerle cevap veren bir Kuran meali/soru-cevap uygulaması. İnteraktif "ayet ağı" görselleştirmesiyle ayetler arası bağlantıları keşfedebilirsiniz.
 
-- 6.348 ayet (112 numarasız besmele dahil), 29 meal, 7.741 soru, 135.000+ ayet bağlantısı
+- 6.348 ayet (112 numarasız besmele dahil), 29 meal, 7.741 soru, 133.000+ ayet bağlantısı
 - Tam metin arama (kelime + tam ifade), ayet kısayolu (`2:255` yaz, git)
 - İnteraktif ayet ağı: derinlik 1/2, sürükle-yakınlaştır, "en bağlantılı ayetler" keşif sayfası
 - Kullanıcı öneri/geri bildirim toplama

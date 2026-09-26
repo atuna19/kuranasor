@@ -17,7 +17,7 @@ En önemli riskler kod karmaşıklığından değil, **erişim kontrolü** ve **
 | 1 | Ziyaretçi önerileri (ad + metin) **şifresiz**, herkese açık bir uç noktadan (`GET /api/feedback`) ve `/oneriler` sayfasından okunabiliyor | 🔴 Yüksek |
 | 2 | Yönetici girişinde deneme sınırı (rate limit) yok; şifre kaba kuvvetle denenebilir | 🔴 Yüksek |
 | 3 | Yöneticinin eklediği sorular tohum veritabanına yazılıyor: ücretsiz Render planında her yeniden başlatmada siliniyor, kalıcı diskte ise yeni veri sürümleri hiç uygulanmıyor | 🔴 Yüksek |
-| 4 | Soru sayfalarında aynı cevap ayeti iki kez listelenebiliyor (Türkçede 714 soru, 1.272 yinelenen bağlantı) | 🟠 Orta |
+| 4 | ~~Soru sayfalarında aynı cevap ayeti iki kez listelenebiliyor (Türkçede 714 soru, 1.272 yinelenen bağlantı)~~ ✅ Düzeltildi | 🟠 Orta |
 | 5 | Mobilde (375 px) üst menü taşıyor; "Hakkında" linki ve dil seçici ekranın dışında kalıyor | 🟠 Orta |
 | 6 | Git geçmişi 166 MB'a ulaşmış; ayrıca geçmişte başka bir projeye ait, Supabase anahtarı içeren bir dosya duruyor | 🟠 Orta |
 | 7 | Test, lint ve CI hiç yok | 🟠 Orta |
@@ -104,8 +104,8 @@ Olumlu yanlar: JSON vurgu alanlarının hepsi geçerli JSON (`json_valid` ile 0 
 
 | Bulgu | Ölçüm | Etkisi |
 |---|---|---|
-| **Yinelenen cevap bağlantıları** | Türkçede 714 soruda 1.272 (soru, ayet) çifti birden fazla kez kayıtlı; tüm dillerde 5.088 | `qAnswers` sorgusu (`server.js:211-220`) tekilleştirme yapmadığından soru sayfasında aynı ayet iki kez görünüyor. Örnek: 14 numaralı soruda 20 cevap var, bunların yalnızca 19'u farklı ayet. `question_verses` için tekilleştirme daha önce yapılmış (`6a47bc0`), `answers` için yapılmamış. |
-| **Ana sayfa ile Keşfet sayfası farklı sayı gösteriyor** | Ana sayfa 135.323 bağlantı, Keşfet 133.897 | `qStats` yinelenenler dahil sayıyor (`server.js:112`), `/api/hubs` ise `DISTINCT` kullanıyor (`server.js:489`). |
+| **Yinelenen cevap bağlantıları** | Türkçede 714 soruda 1.272 (soru, ayet) çifti birden fazla kez kayıtlı; tüm dillerde 5.088 | `qAnswers` sorgusu (`server.js:211-220`) tekilleştirme yapmadığından soru sayfasında aynı ayet iki kez görünüyor. Örnek: 14 numaralı soruda 20 cevap var, bunların yalnızca 19'u farklı ayet. `question_verses` için tekilleştirme daha önce yapılmış (`6a47bc0`), `answers` için yapılmamış. ✅ **Düzeltildi:** `dedupeAnswers()` ile sunucu tarafında teke indiriliyor. |
+| **Ana sayfa ile Keşfet sayfası farklı sayı gösteriyor** | Ana sayfa 135.323 bağlantı, Keşfet 133.897 | `qStats` yinelenenler dahil sayıyor, `/api/hubs` ise `DISTINCT` kullanıyor. ✅ **Düzeltildi:** iki sayfa da artık 133.897 gösteriyor. |
 | Sahipsiz cevap kayıtları | Sorusu olmayan 224 `answers` satırı | Görünmüyor ama veri kirliliği. |
 | Metni olmayan kaynak kayıtları | 116 `question_verses` satırı | Aynı durum. |
 | Cevapsız sorular | 29 Türkçe soru | Sayfada "cevap bağlantısı bulunamadı" çıkıyor. |
@@ -261,7 +261,7 @@ Olumlu: SQL enjeksiyonu yok, XSS bulunmadı, `.env` git'e dahil değil, yönetic
 
 1. `GET /api/feedback` uç noktasına `requireAdmin` ekle; `/oneriler` sayfasını yönetici paneline taşı. **(G1)**
 2. `/api/admin/login`, `/api/feedback` ve `/api/suggest` için rate limit ekle. **(G2, G5)**
-3. `qAnswers` sorgusunu `GROUP BY ans.verse_id` (+ `MAX(highlight)`) ile tekilleştir; `qStats.links` için `DISTINCT` kullan. **(§3.2)**
+3. ~~`qAnswers` sorgusunu tekilleştir; `qStats.links` için `DISTINCT` kullan.~~ ✅ Düzeltildi: cevaplar ayet başına teke indiriliyor, vurgu parçaları birleştiriliyor, bağlantı sayısı tekil sayılıyor, yönetici paneli yeni kopya oluşturmuyor. **(§3.2)**
 4. `render.yaml`'a `ADMIN_PASSWORD` (`sync: false`) ekle; README'deki ortam değişkenleri tablosunu ve Render adımlarını güncelle. **(§8.2)**
 5. Supabase projesinde RLS'in açık olduğunu doğrula. **(G8)**
 6. `npm audit fix`. **(G9)**
