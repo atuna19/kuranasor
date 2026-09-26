@@ -28,7 +28,22 @@ const Database = require('better-sqlite3');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const DB_PATH = path.join(DATA_DIR, 'kuranasor.db');
-const DB_GZ_PATH = path.join(__dirname, 'data', 'kuranasor.db.gz');
+// Masaüstü paketinde büyük veri dosyası app.asar dışında (resourcesPath altında) durur,
+// bu yüzden yol env ile override edilebilir; web/Render deploy'unda dokunulmaz.
+const DB_GZ_PATH = process.env.DB_GZ_PATH || path.join(__dirname, 'data', 'kuranasor.db.gz');
+
+// Masaüstü sürümünde ayarlanırsa, yerel öneri/geri bildirim kayıtları ayrıca
+// canlı siteye de (best-effort, sessizce) iletilir — arkadaşların offline kopyasındaki
+// öneriler böylece yöneticiye ulaşır. Web deploy'unda bu değişken hiç ayarlanmaz.
+const UPSTREAM_SYNC_URL = process.env.UPSTREAM_SYNC_URL || '';
+function upstreamForward(pathname, body) {
+  if (!UPSTREAM_SYNC_URL) return;
+  fetch(UPSTREAM_SYNC_URL + pathname, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }).catch(() => { /* internet yoksa ya da sunucu erişilemezse yerel kayıt zaten yapıldı, yut */ });
+}
 
 // Veritabanı yoksa ama sıkıştırılmış hali repo içindeyse otomatik aç (ilk deploy/kurulum)
 if (!fs.existsSync(DB_PATH) && fs.existsSync(DB_GZ_PATH)) {
@@ -511,6 +526,7 @@ app.post('/api/feedback', (req, res) => {
     return res.status(400).json({ ok: false, error: 'Öneri metni 3-3000 karakter olmalı' });
   }
   insFeedback.run(page || null, name || null, text);
+  upstreamForward('/api/feedback', { page: page || null, name: name || null, text });
   res.json({ ok: true });
 });
 
@@ -532,6 +548,7 @@ app.post('/api/suggest', (req, res) => {
     return res.status(400).json({ ok: false, error: 'Soru metni 5-1000 karakter olmalı.' });
   }
   insSuggestion.run(s, a, questionText, answerRefs || null, name || null);
+  upstreamForward('/api/suggest', { s, a, questionText, answerRefs: answerRefs || null, name: name || null });
   res.json({ ok: true });
 });
 

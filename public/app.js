@@ -37,6 +37,9 @@ const get = async (url) => {
 // güncellenir; arama/ağ/soru-cevap gibi keşif linkleri (data-linear olmayan) dokunmaz.
 const READ_KEY = 'kuranasor_lastread';
 let pendingLinearNav = false;
+// Ayet sayfasındayken sol/sağ ok tuşlarıyla ◁/▷ ile aynı hedeflere gidebilmek için
+let verseNavPrev = null;
+let verseNavNext = null;
 function saveReadingPosition(s, a, surahName) {
   try {
     localStorage.setItem(READ_KEY, JSON.stringify({ s, a, surahName: (surahName || '').trim(), ts: Date.now() }));
@@ -67,6 +70,7 @@ async function pageHome() {
       <div class="divider"></div>
       <div class="ar">وَلَا يَأْتُونَكَ بِمَثَلٍ اِلَّا جِئْنَاكَ بِالْحَقِّ وَ<b>اَحْسَنَ تَفْس۪يراً</b></div>
       <div class="tr">Onların sana yönelttikleri her teze karşı, biz sana gerçeği ve <b>en güzel açıklamayı</b> getiririz.</div>
+      <div class="trans-line">ve la ye'tuneke bi meselin illa ci'nake bil hakkı ve <b>ahsene tefsira</b>.</div>
       <div class="ref">Furkan 25:33</div>
     </div>
     <p class="sub">Ayetlere sorulan her soru, yorum yazılmadan yalnızca başka ayetlerle cevaplanır.
@@ -110,7 +114,7 @@ async function pageHome() {
     c.addEventListener('click', () => go('/ara?q=' + encodeURIComponent(c.dataset.q))));
 }
 
-async function pageSurah(no) {
+async function pageSurah(no, hedefAyet) {
   const { surah, besmele, verses } = await get(`/api/surah/${no}`);
   app.innerHTML = `
   <div class="crumb"><a href="/" data-link>Sureler</a> / <b>${esc(surah.name.trim())}</b></div>
@@ -149,6 +153,16 @@ async function pageSurah(no) {
     arToggle.textContent = arShown ? '🔤 Arapçasını gizle' : '🔤 Arapçasını göster';
     document.querySelectorAll('#verseList .row-arabic').forEach((el) => (el.hidden = !arShown));
   });
+  // Ayet ayet sayfasından "s:a" kırıntısıyla gelindiyse, listenin başı yerine
+  // kaldığı ayete kaydır ve kısa süre vurgula.
+  if (hedefAyet) {
+    const hedefRow = document.querySelector(`#verseList a[href="/ayet/${no}/${hedefAyet}"]`);
+    if (hedefRow) {
+      hedefRow.scrollIntoView({ block: 'center' });
+      hedefRow.classList.add('jump-target');
+      setTimeout(() => hedefRow.classList.remove('jump-target'), 1800);
+    }
+  }
 }
 
 async function pageVerse(s, a) {
@@ -157,8 +171,10 @@ async function pageVerse(s, a) {
   // Yalnızca düz okuma sayılan bir bağlantıyla (sure listesi ya da ◁/▷) buraya gelindiyse konumu kaydet
   if (pendingLinearNav) saveReadingPosition(s, a, surah.name);
   pendingLinearNav = false;
+  verseNavPrev = prev || null;
+  verseNavNext = next || null;
   app.innerHTML = `
-  <div class="crumb"><a href="/" data-link>Sureler</a> / <a href="/sure/${s}" data-link>${esc(surah.name.trim())}</a> / <b>${s}:${a}</b></div>
+  <div class="crumb"><a href="/" data-link>Sureler</a> / <a href="/sure/${s}" data-link>${esc(surah.name.trim())}</a> / <a href="/sure/${s}?ayet=${a}" data-link>${s}:${a}</a></div>
   <div class="verse-wrap">
     <div>
       <div class="verse-card">
@@ -967,6 +983,19 @@ document.addEventListener('click', (e) => {
 });
 window.addEventListener('popstate', () => { pendingLinearNav = false; render(); });
 
+// Ayet sayfasında ←/→ ile önceki/sonraki ayete geç (◁/▷ düğmeleriyle aynı hedef, aynı okuma-konumu takibi)
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  if (!/^\/ayet\//.test(location.pathname)) return;
+  const tag = document.activeElement && document.activeElement.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  const hedef = e.key === 'ArrowLeft' ? verseNavPrev : verseNavNext;
+  if (!hedef) return;
+  e.preventDefault();
+  pendingLinearNav = true;
+  go(`/ayet/${hedef.surah_no}/${hedef.ayah_no}`);
+});
+
 function setActiveNav(path) {
   const active = path === '/hakkinda' ? '/hakkinda'
     : path === '/kesfet' || /^\/ag\//.test(path) ? '/kesfet'
@@ -986,7 +1015,7 @@ async function render() {
   try {
     let m;
     if (path === '/' || path === '/anasayfa') await pageHome();
-    else if ((m = path.match(/^\/sure\/(\d+)$/))) await pageSurah(m[1]);
+    else if ((m = path.match(/^\/sure\/(\d+)$/))) await pageSurah(m[1], params.get('ayet'));
     else if ((m = path.match(/^\/ayet\/(\d+)\/(\d+)$/))) await pageVerse(m[1], m[2]);
     else if ((m = path.match(/^\/soru\/(\d+)\/(\d+)\/(\d+)$/))) await pageQuestion(m[1], m[2], m[3]);
     else if ((m = path.match(/^\/ag\/(\d+)\/(\d+)$/))) await pageGraph(m[1], m[2]);
