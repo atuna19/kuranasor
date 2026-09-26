@@ -16,3 +16,20 @@ Thumbs.db
 
 .env
 .env.local
+
+# Masaüstü paketleme çıktıları — büyük, kişiye özel, tekrar üretilebilir
+dist/
+veri-dagitim/
+verilen-anahtarlar.txt
+
+# Masaüstü uygulamasının çalışma zamanı verisi (lisans + açılmış veritabanı)
+kuranasor-veri/
+
+# better-sqlite3'ün Node/Electron için önbelleklenmiş derlenmiş sürümleri
+.native-cache/
+
+# Lisans sistemi — ortak giz iceriyor, public depoya gitmez
+lisans.js
+lisans.html
+lisans-preload.js
+anahtar-uret.js

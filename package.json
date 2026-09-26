@@ -2,20 +2,75 @@
   "name": "kuranasor",
   "version": "1.0.0",
   "description": "Kuran'a Sor — ayetlere sorulan sorulara yine ayetlerle cevap veren, ayet ağı görselleştirmesi olan Kuran meali/soru-cevap uygulaması",
-  "main": "server.js",
+  "main": "electron-main.js",
   "private": true,
   "scripts": {
-    "start": "node server.js",
+    "start": "node scripts/native-hedef.js node && node server.js",
+    "masaustu": "node scripts/native-hedef.js electron && electron .",
     "db:import-sql": "node scripts/import-sql.js",
-    "db:import-json": "node scripts/import-json.js"
+    "db:import-json": "node scripts/import-json.js",
+    "build": "node scripts/native-hedef.js node && node veri-hazirla.js && node scripts/native-hedef.js electron && electron-builder --win --x64",
+    "anahtar": "node anahtar-uret.js"
   },
   "engines": {
     "node": ">=18"
   },
-  "keywords": ["kuran", "quran", "meal", "tefsir"],
+  "keywords": [
+    "kuran",
+    "quran",
+    "meal",
+    "tefsir"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "build": {
+    "appId": "com.kuranasor.masaustu",
+    "productName": "Kuran'a Sor",
+    "icon": "build/icon.ico",
+    "files": [
+      "server.js",
+      "electron-main.js",
+      "lisans.js",
+      "lisans.html",
+      "lisans-preload.js",
+      "public/**/*",
+      "build/icon.ico",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**/*"
+    ],
+    "npmRebuild": false,
+    "extraResources": [
+      {
+        "from": "veri-dagitim",
+        "to": "veri"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Kuran'a Sor",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "include": "build/installer.nsh"
+    }
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "^1.0.7",
+    "electron": "^42.9.3",
+    "electron-builder": "^26.15.3",
+    "png-to-ico": "^3.0.2"
+  },
   "dependencies": {
     "better-sqlite3": "^12.11.1",
     "express": "^5.2.1"
