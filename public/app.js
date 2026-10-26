@@ -185,9 +185,43 @@ function wrapLines(g, text, maxW) {
   if (line) lines.push(line);
   return lines;
 }
-async function saveShareImage({ kicker, title, source, items, fileName }) {
+// Vurgu parçalarını (JSON dizi) metindeki kelimelere işaretler: [{w, hl}]
+function hlWords(text, highlightJson) {
+  const ranges = [];
   try {
-    await Promise.all(['500 60px "Fraunces"', '400 28px "Literata"', '600 22px "Instrument Sans"', '30px "Amiri Quran"']
+    const parts = JSON.parse(highlightJson || '[]');
+    for (const raw of Array.isArray(parts) ? parts : []) {
+      const p = String(raw).trim().replace(/\s+/g, ' ');
+      const i = p ? text.indexOf(p) : -1;
+      if (i >= 0) ranges.push([i, i + p.length]);
+    }
+  } catch {}
+  const out = [];
+  const re = /\S+/g;
+  let m;
+  while ((m = re.exec(text))) {
+    const a = m.index, b = a + m[0].length;
+    out.push({ w: m[0], hl: ranges.some(([x, y]) => a < y && b > x) });
+  }
+  return out;
+}
+function wrapWordObjs(g, words, maxW) {
+  const lines = [];
+  let line = [], width = 0;
+  const sp = g.measureText(' ').width;
+  for (const o of words) {
+    const w = g.measureText(o.w).width;
+    if (line.length && width + sp + w > maxW) { lines.push(line); line = []; width = 0; }
+    width += (line.length ? sp : 0) + w;
+    line.push(o);
+  }
+  if (line.length) lines.push(line);
+  return lines;
+}
+// Sıra: Kuran'a Sor → sorulan ayet (vurgusu altın) → soru → cevap ayetleri
+async function saveShareImage({ source, title, items, fileName }) {
+  try {
+    await Promise.all(['500 60px "Fraunces"', '400 28px "Literata"', 'italic 400 28px "Literata"', '600 22px "Instrument Sans"']
       .map((f) => document.fonts.load(f).catch(() => null)));
   } catch {}
   const W = 1080, H = 1350, M = 96, maxW = W - M * 2;
@@ -198,64 +232,80 @@ async function saveShareImage({ kicker, title, source, items, fileName }) {
   g.fillStyle = COVER; g.fillRect(0, 0, W, H);
   g.strokeStyle = 'rgba(211,178,92,.45)'; g.lineWidth = 2;
   g.beginPath(); g.roundRect ? g.roundRect(40, 40, W - 80, H - 80, 20) : g.rect(40, 40, W - 80, H - 80); g.stroke();
+  g.textBaseline = 'alphabetic';
   const spaced = (txt, x, y, sp) => { // harf aralıklı küçük başlık
     let cx = x;
     for (const ch of txt) { g.fillText(ch, cx, y); cx += g.measureText(ch).width + sp; }
   };
-  // başlık bloğu
-  g.fillStyle = GOLD; g.font = '600 22px "Instrument Sans", sans-serif'; g.textBaseline = 'alphabetic';
-  spaced(kicker.toLocaleUpperCase('tr'), M, 150, 3);
-  let tSize = 60;
-  g.fillStyle = CREAM; g.font = `500 ${tSize}px "Fraunces", Georgia, serif`;
-  let titleLines = wrapLines(g, title, maxW);
-  if (titleLines.length > 3) {
-    tSize = 46; g.font = `500 ${tSize}px "Fraunces", Georgia, serif`;
-    titleLines = wrapLines(g, title, maxW).slice(0, 4);
-  }
-  const tLH = tSize * 1.14;
-  let y = 150 + 30 + tLH;
-  titleLines.forEach((l) => { g.fillText(l, M, y); y += tLH; });
-  y += 6;
-  g.fillStyle = GOLD; g.fillRect(M, y, 64, 2);
-  y += 54;
-  // sorulan ayet + cevap ayetleri: hepsinin sığdığı en büyük yazı boyutu seçilir
-  const bottom = H - 170;
+  const label = (txt, x, y) => { g.fillStyle = GOLD; g.font = '600 20px "Instrument Sans", sans-serif'; spaced(txt.toLocaleUpperCase('tr'), x, y, 2.6); };
+
+  // 1) Kuran'a Sor
+  g.fillStyle = GOLD; g.font = '600 24px "Instrument Sans", sans-serif';
+  spaced("KURAN'A SOR", M, 140, 4);
+  g.fillRect(M, 160, 64, 2);
+
+  const top = 214, bottom = H - 170;
+  const srcWords = source ? hlWords(source.text, source.highlight) : null;
   const layout = (size) => {
     const lh = size * 1.5;
-    const out = []; let yy = y; let src = null; let headY = null;
-    if (source) {
-      g.font = `italic 400 ${size}px "Literata", Georgia, serif`;
-      let ls = wrapLines(g, source.text, maxW - 26);
-      if (ls.length > 6) { ls = ls.slice(0, 6); ls[5] = ls[5].replace(/\s*\S*$/, '') + '…'; }
-      const h = 30 + ls.length * lh;
-      src = { ls, y: yy, h };
-      yy += h + 40;
-      headY = yy; yy += 46;
+    let y = top;
+    let src = null;
+    if (srcWords) {
+      g.font = `400 ${size + 2}px "Literata", Georgia, serif`;
+      let lines = wrapWordObjs(g, srcWords, maxW - 26);
+      if (lines.length > 7) { lines = lines.slice(0, 7); lines[6].push({ w: '…', hl: false }); }
+      const h = 30 + lines.length * (size + 2) * 1.5;
+      src = { lines, y, h, size: size + 2 };
+      y += h + 42;
     }
+    // 3) soru
+    const tSize = Math.round(size * 1.75);
+    g.font = `500 ${tSize}px "Fraunces", Georgia, serif`;
+    const tLines = wrapLines(g, title, maxW).slice(0, 3);
+    const q = { y, tSize, tLines };
+    y += 30 + tLines.length * tSize * 1.14 + 24;
+    const ruleY = y; y += 40;
+    const headY = y; y += 44;
+    const out = [];
     for (const it of items) {
       g.font = `400 ${size}px "Literata", Georgia, serif`;
       const ls = wrapLines(g, it.text, maxW);
       const h = 30 + ls.length * lh + 26;
-      if (yy + h > bottom) break;
-      out.push({ it, ls, y: yy }); yy += h;
+      if (y + h > bottom) break;
+      out.push({ it, ls, y }); y += h;
     }
-    return { out, lh, size, src, headY };
+    return { out, lh, size, src, q, ruleY, headY };
   };
-  let L = null;
   // 24 pikselin altına inilmez; sığmayan ayetler "+N ayet daha" olarak bağlantıya bırakılır
+  let L = null;
   for (const size of [30, 27, 24]) {
     L = layout(size);
     if (L.out.length === items.length) break;
   }
+  // 2) sorulan ayet
   if (L.src) {
     g.fillStyle = GOLD; g.fillRect(M, L.src.y, 3, L.src.h);
-    g.font = '600 20px "Instrument Sans", sans-serif';
-    spaced(('Sorulan ayet · ' + source.ref).toLocaleUpperCase('tr'), M + 26, L.src.y + 20, 2.5);
-    g.fillStyle = CREAM; g.font = `italic 400 ${L.size}px "Literata", Georgia, serif`;
-    L.src.ls.forEach((l, k) => g.fillText(l, M + 26, L.src.y + 30 + L.lh * (k + 0.8)));
-    g.fillStyle = GOLD; g.font = '600 20px "Instrument Sans", sans-serif';
-    spaced("KURAN'IN CEVABI", M, L.headY + 20, 3);
+    label(source.ref, M + 26, L.src.y + 20);
+    g.font = `400 ${L.src.size}px "Literata", Georgia, serif`;
+    const sp = g.measureText(' ').width;
+    L.src.lines.forEach((line, k) => {
+      let x = M + 26;
+      const y = L.src.y + 30 + L.src.size * 1.5 * (k + 0.8);
+      for (const o of line) {
+        g.font = o.hl ? `600 ${L.src.size}px "Literata", Georgia, serif` : `400 ${L.src.size}px "Literata", Georgia, serif`;
+        g.fillStyle = o.hl ? GOLD : CREAM;
+        g.fillText(o.w, x, y);
+        x += g.measureText(o.w).width + sp;
+      }
+    });
   }
+  // 3) soru
+  label('Soru', M, L.q.y + 20);
+  g.fillStyle = CREAM; g.font = `500 ${L.q.tSize}px "Fraunces", Georgia, serif`;
+  L.q.tLines.forEach((l, k) => g.fillText(l, M, L.q.y + 30 + L.q.tSize * 1.14 * (k + 0.85)));
+  g.fillStyle = GOLD; g.fillRect(M, L.ruleY, 64, 2);
+  // 4) cevap ayetleri
+  label("Kuran'ın cevabı", M, L.headY + 20);
   for (const row of L.out) {
     g.fillStyle = GOLD; g.font = '600 20px "Instrument Sans", sans-serif';
     spaced(row.it.ref.toLocaleUpperCase('tr'), M, row.y + 20, 2.5);
@@ -652,13 +702,15 @@ async function pageQuestion(id, s, a) {
   const srcMeal = d.source && d.source.meal ? clean(d.source.meal) : '';
   const buildText = () => {
     const sel = selected();
+    // Sıra: Kuran'a Sor → sorulan ayet → soru → cevap ayetleri. Okuyucu önce ayeti okur,
+    // içindeki kavramı görür, sonra soruyla karşılaşır.
+    const qLine = srcMeal ? (generic ? 'İlişkili ayetler' : `Soru: ${shareTitle}`) : shareTitle;
     if (mode === 'short') {
-      return `${shareTitle}${srcRef && !generic ? ` (${srcRef})` : ''}\nKuran'ın cevabı: ${sel.map((x) => x.ref).join(' · ')}\n${link}`;
+      return `Kuran'a Sor${srcRef ? ` · ${srcRef}` : ''}\n${qLine}\nKuran'ın cevabı: ${sel.map((x) => x.ref).join(' · ')}\n${link}`;
     }
-    // Sorunun sorulduğu ayet, sure-ayet numarası ve mealiyle birlikte başta yer alır
-    const srcBlock = srcMeal ? `\n\nSorulan ayet · ${srcRef}\n"${srcMeal}"` : '';
+    const srcBlock = srcMeal ? `${srcRef}\n"${srcMeal}"\n\n` : '';
     const body = sel.map((x) => `${x.ref}\n"${clean(x.meal)}"`).join('\n\n');
-    return `${shareTitle}${srcBlock}\n\nKuran'ın cevabı:\n\n${body}\n\nKuran'a Sor · yorum yok, yalnızca ayet\n${link}`;
+    return `Kuran'a Sor\n\n${srcBlock}${qLine}\n\nKuran'ın cevabı:\n\n${body}\n\nYorum yok, yalnızca ayet\n${link}`;
   };
   const update = () => {
     const n = selected().length;
@@ -714,9 +766,8 @@ async function pageQuestion(id, s, a) {
     btn.disabled = true; btn.textContent = 'Hazırlanıyor…';
     try {
       await saveShareImage({
-        kicker: "Kuran'a Sor",
-        title: shareTitle,
-        source: srcMeal ? { ref: srcRef, text: srcMeal } : null,
+        title: srcMeal && generic ? 'İlişkili ayetler' : shareTitle,
+        source: srcMeal ? { ref: srcRef, text: srcMeal, highlight: d.source.highlight } : null,
         items: sel.map((x) => ({ ref: x.ref, text: clean(x.meal) })),
         fileName: `kuranasor-soru-${id}.png`,
       });
