@@ -4,25 +4,37 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kuran'a Sor</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=Amiri+Quran&display=swap" rel="stylesheet">
+<script>
+  // Gece modu ilk boyamadan önce uygulanır ki sayfa bir an açık renkte parlamasın
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem('kuranasor_tema'); } catch (e) {}
+    if (!t) t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
+<link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <nav>
-  <a class="logo" href="/" data-link><span class="mark">KS</span>Kuran'a Sor</a>
+  <a class="logo" href="/" data-link><span class="mark">KS</span><span class="brand">Kuran'a Sor</span></a>
   <div class="links">
     <a href="/" data-link>Sureler</a>
     <a href="/kesfet" data-link>Ağ</a>
     <a href="/hakkinda" data-link>Hakkında</a>
   </div>
-  <select id="lang" title="İçerik dili">
-    <option value="tr">TR</option>
-    <option value="az">AZ</option>
-    <option value="en">EN</option>
-    <option value="de">DE</option>
-  </select>
+  <div class="nav-tools">
+    <select id="lang" title="İçerik dili" aria-label="İçerik dili">
+      <option value="tr">TR</option>
+      <option value="az">AZ</option>
+      <option value="en">EN</option>
+      <option value="de">DE</option>
+    </select>
+    <button type="button" id="themeBtn" class="theme-btn" aria-pressed="false">Gece</button>
+  </div>
 </nav>
+<div id="trail" hidden></div>
 <main id="app"><div class="loading">Yükleniyor…</div></main>
 <script src="/app.js"></script>
 </body>

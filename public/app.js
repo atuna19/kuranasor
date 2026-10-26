@@ -49,83 +49,350 @@ function getReadingPosition() {
   try { return JSON.parse(localStorage.getItem(READ_KEY) || 'null'); } catch { return null; }
 }
 
+// ---------- ORTAK YARDIMCILAR ----------
+// Paylaşılan bağlantılar her zaman canlı siteye gider (masaüstünden paylaşılsa da)
+const PUBLIC_ORIGIN = 'https://kuranasor.onrender.com';
+const fmtTR = (n) => Number(n || 0).toLocaleString('tr-TR');
+const AR_DIGITS = '٠١٢٣٤٥٦٧٨٩';
+const toArabicDigits = (n) => String(n).replace(/\d/g, (d) => AR_DIGITS[d]);
+const ayetSonu = (n) => `<span class="ayet-son">﴿${toArabicDigits(n)}﴾</span>`;
+// Türkçe harfleri sadeleştir: "isra" yazınca "İsra", "yasin" yazınca "Yasin" bulunsun
+const fold = (s) => String(s || '').toLocaleLowerCase('tr')
+  .replace(/̇/g, '').replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ç/g, 'c').replace(/ğ/g, 'g')
+  .replace(/ö/g, 'o').replace(/ü/g, 'u').replace(/[âà]/g, 'a').replace(/[^a-z0-9 ]/g, '').trim();
+function sureSure(sn) {
+  if (!sn) return '';
+  if (sn < 60) return sn + ' sn';
+  const m = Math.round(sn / 60);
+  return m < 60 ? m + ' dk' : Math.floor(m / 60) + ' sa' + (m % 60 ? ' ' + (m % 60) + ' dk' : '');
+}
+const yildiz = (n) => `<svg class="yildiz" viewBox="0 0 40 40" aria-hidden="true"><rect x="9" y="9" width="22" height="22"/><rect x="9" y="9" width="22" height="22" transform="rotate(45 20 20)"/><text x="20" y="24.3" text-anchor="middle"${n >= 100 ? ' class="k3"' : ''}>${n}</text></svg>`;
+const SURE_AR = ['الفاتحة', 'البقرة', 'آل عمران', 'النساء', 'المائدة', 'الأنعام', 'الأعراف', 'الأنفال', 'التوبة', 'يونس',
+  'هود', 'يوسف', 'الرعد', 'إبراهيم', 'الحجر', 'النحل', 'الإسراء', 'الكهف', 'مريم', 'طه',
+  'الأنبياء', 'الحج', 'المؤمنون', 'النور', 'الفرقان', 'الشعراء', 'النمل', 'القصص', 'العنكبوت', 'الروم',
+  'لقمان', 'السجدة', 'الأحزاب', 'سبأ', 'فاطر', 'يس', 'الصافات', 'ص', 'الزمر', 'غافر',
+  'فصلت', 'الشورى', 'الزخرف', 'الدخان', 'الجاثية', 'الأحقاف', 'محمد', 'الفتح', 'الحجرات', 'ق',
+  'الذاريات', 'الطور', 'النجم', 'القمر', 'الرحمن', 'الواقعة', 'الحديد', 'المجادلة', 'الحشر', 'الممتحنة',
+  'الصف', 'الجمعة', 'المنافقون', 'التغابن', 'الطلاق', 'التحريم', 'الملك', 'القلم', 'الحاقة', 'المعارج',
+  'نوح', 'الجن', 'المزمل', 'المدثر', 'القيامة', 'الإنسان', 'المرسلات', 'النبأ', 'النازعات', 'عبس',
+  'التكوير', 'الانفطار', 'المطففين', 'الانشقاق', 'البروج', 'الطارق', 'الأعلى', 'الغاشية', 'الفجر', 'البلد',
+  'الشمس', 'الليل', 'الضحى', 'الشرح', 'التين', 'العلق', 'القدر', 'البينة', 'الزلزلة', 'العاديات',
+  'القارعة', 'التكاثر', 'العصر', 'الهمزة', 'الفيل', 'قريش', 'الماعون', 'الكوثر', 'الكافرون', 'النصر',
+  'المسد', 'الإخلاص', 'الفلق', 'الناس'];
+
+let toastTimer = null;
+function showToast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+  t.textContent = msg;
+  t.classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('on'), 2600);
+}
+
+async function copyText(txt) {
+  try { await navigator.clipboard.writeText(txt); return true; } catch {}
+  const ta = document.createElement('textarea');
+  ta.value = txt; ta.setAttribute('readonly', '');
+  ta.style.position = 'fixed'; ta.style.opacity = '0'; ta.style.top = '0';
+  document.body.appendChild(ta); ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch {}
+  ta.remove();
+  return ok;
+}
+
+// ---------- GECE MODU ----------
+const themeBtn = document.getElementById('themeBtn');
+function syncThemeBtn() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  themeBtn.setAttribute('aria-pressed', String(dark));
+  themeBtn.textContent = dark ? 'Gündüz' : 'Gece';
+  themeBtn.title = dark ? 'Gündüz okuma moduna geç' : 'Gece okuma moduna geç';
+}
+themeBtn.addEventListener('click', () => {
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('kuranasor_tema', next); } catch {}
+  syncThemeBtn();
+});
+syncThemeBtn();
+
+// ---------- OKUMA İZİ (geri dönüş) ----------
+// Ayet, soru ve ağ sayfalarında gezilen yol oturum boyunca tutulur. Düz okuma
+// (◁/▷, sure listesi, "Okumaya dön") izi o ayetle yeniden başlatır.
+const TRAIL_KEY = 'kuranasor_iz';
+const trailEl = document.getElementById('trail');
+function readTrail() {
+  try { return JSON.parse(sessionStorage.getItem(TRAIL_KEY) || '[]'); } catch { return []; }
+}
+function writeTrail(t) {
+  try { sessionStorage.setItem(TRAIL_KEY, JSON.stringify(t.slice(-12))); } catch {}
+}
+function hideTrail() { trailEl.hidden = true; trailEl.innerHTML = ''; }
+function trailVisit(path, label, reset) {
+  let t = reset ? [] : readTrail();
+  const i = t.findIndex((x) => x.path === path);
+  if (i >= 0) { t = t.slice(0, i + 1); t[i].label = label; } // geri gelindi: sonrası kesilir
+  else t.push({ path, label });
+  writeTrail(t);
+  renderTrail(path);
+}
+function trailBack() {
+  const t = readTrail();
+  const i = t.findIndex((x) => x.path === location.pathname);
+  const prev = i > 0 ? t[i - 1] : null;
+  if (!prev) return false;
+  pendingLinearNav = false;
+  go(prev.path);
+  return true;
+}
+function renderTrail(current) {
+  const t = readTrail();
+  const pos = getReadingPosition();
+  const posPath = pos ? `/ayet/${pos.s}/${pos.a}` : null;
+  const showReturn = posPath && posPath !== current;
+  const idx = t.findIndex((x) => x.path === current);
+  if (t.length < 2 && !showReturn) return hideTrail();
+  const shown = t.slice(-8);
+  const chips = shown.map((x) => {
+    const isStart = x === t[0] && x.path === posPath;
+    if (x.path === current) return `<span class="iz now" title="${esc(x.label)}">${esc(x.label)}</span>`;
+    return `<a class="iz${isStart ? ' start' : ''}" href="${esc(x.path)}" data-link title="${esc(x.label)}">${esc(x.label)}</a>`;
+  }).join('<span class="iz-sep" aria-hidden="true">›</span>');
+  trailEl.innerHTML = `
+    <div class="trail-in">
+      <span class="trail-lbl">Okuma izin</span>
+      <div class="chips-iz">${t.length > shown.length ? '<span class="iz-sep">…</span>' : ''}${chips}</div>
+      ${idx > 0 ? `<button type="button" class="tbtn" id="trailBackBtn" title="Bir önceki sayfa (Alt + ←)">← Geri</button>` : ''}
+      ${showReturn ? `<a class="tbtn primary" href="${posPath}" data-link data-linear="1" title="Sırayla okuduğun son ayete dön">↩ Okumaya dön · ${pos.s}:${pos.a}</a>` : ''}
+    </div>`;
+  trailEl.hidden = false;
+  const bb = document.getElementById('trailBackBtn');
+  if (bb) bb.addEventListener('click', trailBack);
+}
+
+// ---------- PAYLAŞIM GÖRSELİ (1080×1350) ----------
+function wrapLines(g, text, maxW) {
+  const words = String(text).split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = '';
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (g.measureText(test).width > maxW && line) { lines.push(line); line = w; }
+    else line = test;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+async function saveShareImage({ kicker, title, source, items, fileName }) {
+  try {
+    await Promise.all(['500 60px "Fraunces"', '400 28px "Literata"', '600 22px "Instrument Sans"', '30px "Amiri Quran"']
+      .map((f) => document.fonts.load(f).catch(() => null)));
+  } catch {}
+  const W = 1080, H = 1350, M = 96, maxW = W - M * 2;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const COVER = '#163a2e', GOLD = '#d3b25c', CREAM = '#efe6cc', BODY = '#e3dcc6', MUTE = '#a9bcae';
+  g.fillStyle = COVER; g.fillRect(0, 0, W, H);
+  g.strokeStyle = 'rgba(211,178,92,.45)'; g.lineWidth = 2;
+  g.beginPath(); g.roundRect ? g.roundRect(40, 40, W - 80, H - 80, 20) : g.rect(40, 40, W - 80, H - 80); g.stroke();
+  const spaced = (txt, x, y, sp) => { // harf aralıklı küçük başlık
+    let cx = x;
+    for (const ch of txt) { g.fillText(ch, cx, y); cx += g.measureText(ch).width + sp; }
+  };
+  // başlık bloğu
+  g.fillStyle = GOLD; g.font = '600 22px "Instrument Sans", sans-serif'; g.textBaseline = 'alphabetic';
+  spaced(kicker.toLocaleUpperCase('tr'), M, 150, 3);
+  let tSize = 60;
+  g.fillStyle = CREAM; g.font = `500 ${tSize}px "Fraunces", Georgia, serif`;
+  let titleLines = wrapLines(g, title, maxW);
+  if (titleLines.length > 3) {
+    tSize = 46; g.font = `500 ${tSize}px "Fraunces", Georgia, serif`;
+    titleLines = wrapLines(g, title, maxW).slice(0, 4);
+  }
+  const tLH = tSize * 1.14;
+  let y = 150 + 30 + tLH;
+  titleLines.forEach((l) => { g.fillText(l, M, y); y += tLH; });
+  y += 6;
+  g.fillStyle = GOLD; g.fillRect(M, y, 64, 2);
+  y += 54;
+  // sorulan ayet + cevap ayetleri: hepsinin sığdığı en büyük yazı boyutu seçilir
+  const bottom = H - 170;
+  const layout = (size) => {
+    const lh = size * 1.5;
+    const out = []; let yy = y; let src = null; let headY = null;
+    if (source) {
+      g.font = `italic 400 ${size}px "Literata", Georgia, serif`;
+      let ls = wrapLines(g, source.text, maxW - 26);
+      if (ls.length > 6) { ls = ls.slice(0, 6); ls[5] = ls[5].replace(/\s*\S*$/, '') + '…'; }
+      const h = 30 + ls.length * lh;
+      src = { ls, y: yy, h };
+      yy += h + 40;
+      headY = yy; yy += 46;
+    }
+    for (const it of items) {
+      g.font = `400 ${size}px "Literata", Georgia, serif`;
+      const ls = wrapLines(g, it.text, maxW);
+      const h = 30 + ls.length * lh + 26;
+      if (yy + h > bottom) break;
+      out.push({ it, ls, y: yy }); yy += h;
+    }
+    return { out, lh, size, src, headY };
+  };
+  let L = null;
+  // 24 pikselin altına inilmez; sığmayan ayetler "+N ayet daha" olarak bağlantıya bırakılır
+  for (const size of [30, 27, 24]) {
+    L = layout(size);
+    if (L.out.length === items.length) break;
+  }
+  if (L.src) {
+    g.fillStyle = GOLD; g.fillRect(M, L.src.y, 3, L.src.h);
+    g.font = '600 20px "Instrument Sans", sans-serif';
+    spaced(('Sorulan ayet · ' + source.ref).toLocaleUpperCase('tr'), M + 26, L.src.y + 20, 2.5);
+    g.fillStyle = CREAM; g.font = `italic 400 ${L.size}px "Literata", Georgia, serif`;
+    L.src.ls.forEach((l, k) => g.fillText(l, M + 26, L.src.y + 30 + L.lh * (k + 0.8)));
+    g.fillStyle = GOLD; g.font = '600 20px "Instrument Sans", sans-serif';
+    spaced("KURAN'IN CEVABI", M, L.headY + 20, 3);
+  }
+  for (const row of L.out) {
+    g.fillStyle = GOLD; g.font = '600 20px "Instrument Sans", sans-serif';
+    spaced(row.it.ref.toLocaleUpperCase('tr'), M, row.y + 20, 2.5);
+    g.fillStyle = BODY; g.font = `400 ${L.size}px "Literata", Georgia, serif`;
+    row.ls.forEach((l, k) => g.fillText(l, M, row.y + 30 + L.lh * (k + 0.8)));
+  }
+  const rest = items.length - L.out.length;
+  // alt bilgi
+  g.fillStyle = MUTE; g.font = '500 22px "Instrument Sans", sans-serif';
+  g.fillText(rest > 0 ? `+${rest} ayet daha · tamamı bağlantıda` : 'Yorum yok, yalnızca ayet', M, H - 104);
+  g.fillText(PUBLIC_ORIGIN.replace(/^https?:\/\//, ''), M, H - 72);
+  const bx = W - M - 58, by = H - 136;
+  g.strokeStyle = 'rgba(211,178,92,.6)'; g.lineWidth = 2;
+  g.beginPath(); g.roundRect ? g.roundRect(bx, by, 58, 58, 12) : g.rect(bx, by, 58, 58); g.stroke();
+  g.fillStyle = GOLD; g.font = '600 24px "Fraunces", Georgia, serif'; g.textAlign = 'center';
+  g.fillText('KS', bx + 29, by + 38); g.textAlign = 'left';
+  const blob = await new Promise((res) => c.toBlob(res, 'image/png'));
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fileName;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
 // ---------- SAYFALAR ----------
 
 async function pageHome() {
   const { stats, surahs } = await get('/api/surahs');
-  const fmt = (n) => n.toLocaleString('tr-TR');
   const lastRead = getReadingPosition();
+  const maxQ = Math.max(...surahs.map((s) => s.question_count || 0), 1);
+  const suraHtml = (s) => {
+    const reading = lastRead && Number(lastRead.s) === s.id;
+    const besmele = s.id !== 1 && s.id !== 9;
+    return `
+      <a class="sura${reading ? ' reading' : ''}" href="/sure/${s.id}" data-link data-k="${esc(fold(s.name) + ' ' + s.id)}">
+        ${reading ? `<span class="now">Okuyorsun · ${lastRead.s}:${lastRead.a}</span>` : ''}
+        <div class="top">${yildiz(s.id)}<span class="arn" lang="ar">${SURE_AR[s.id - 1] || ''}</span></div>
+        <h3>${esc(s.name.trim())}</h3>
+        <div class="m">${s.verse_count} ayet${besmele ? ' · besmele' : ''}${s.audio_duration ? ' · dinleme ' + sureSure(s.audio_duration) : ''}</div>
+        <div class="qd"><span>${fmtTR(s.question_count)} soru</span><i style="--w:${Math.max(2, Math.round((s.question_count || 0) / maxQ * 100))}%"></i></div>
+      </a>`;
+  };
   app.innerHTML = `
-  ${lastRead ? `
-  <a class="resume-strip" href="/ayet/${lastRead.s}/${lastRead.a}" data-link data-linear="1">
-    <span class="rs-ico">📖</span>
-    <span><b>Kaldığınız yer:</b> ${esc(lastRead.surahName)} ${lastRead.s}:${lastRead.a} — Devam Et</span>
-    <span class="rs-go">→</span>
-  </a>` : ''}
-  <div class="hero">
-    <div class="bismillah">بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّح۪يمِ</div>
-    <h1>Sorunun cevabı yine <em>Kuran'da</em></h1>
-    <div class="tefsir-tagline">KURAN EN GÜZEL TEFSİRDİR</div>
-    <div class="verseA">
-      <div class="divider"></div>
-      <div class="ar">وَلَا يَأْتُونَكَ بِمَثَلٍ اِلَّا جِئْنَاكَ بِالْحَقِّ وَ<b>اَحْسَنَ تَفْس۪يراً</b></div>
-      <div class="tr">Onların sana yönelttikleri her teze karşı, biz sana gerçeği ve <b>en güzel açıklamayı</b> getiririz.</div>
-      <div class="trans-line">ve la ye'tuneke bi meselin illa ci'nake bil hakkı ve <b>ahsene tefsira</b>.</div>
-      <div class="ref">Furkan 25:33</div>
+  <section class="hero">
+    <div class="hero-in">
+      <div class="besm" lang="ar">بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّح۪يمِ</div>
+      <h1 class="h-title">Sorunun cevabı yine <em>Kuran'da</em></h1>
+      <div class="h-tag">Kuran en güzel tefsirdir</div>
+      <div class="h-verse">
+        <div class="a" lang="ar">وَلَا يَأْتُونَكَ بِمَثَلٍ اِلَّا جِئْنَاكَ بِالْحَقِّ وَ<b>اَحْسَنَ تَفْس۪يراً</b> ${ayetSonu(33)}</div>
+        <div class="t">Onların sana yönelttikleri her teze karşı, biz sana gerçeği ve <b>en güzel açıklamayı</b> getiririz.</div>
+        <div class="tl">ve la ye'tuneke bi meselin illa ci'nake bil hakkı ve <b>ahsene tefsira</b>.</div>
+        <div class="r">Furkan 25:33</div>
+      </div>
+      <p class="h-sub">Ayetlere sorulan her soru, yorum yazılmadan yalnızca başka ayetlerle cevaplanır.</p>
+      <form class="search h-search" id="searchForm" role="search">
+        <input id="q" aria-label="Arama" placeholder="Kelime, cümle ya da ayet: Allah, doğru yol, 2:255" autocomplete="off">
+        <button class="btn" type="submit">Ara</button>
+      </form>
+      <div class="h-chips">
+        ${['Allah', 'Kuran', 'Evrenlerin Rabbi', 'Doğru yol'].map((c) => `<button type="button" class="chip" data-q="${c}">${c}</button>`).join('')}
+      </div>
     </div>
-    <p class="sub">Ayetlere sorulan her soru, yorum yazılmadan yalnızca başka ayetlerle cevaplanır.
-      ${fmt(stats.questions)} soru, ${fmt(stats.links)} ayet bağlantısıyla Kuran'ı Kuran'a sorun.</p>
-    <form class="search" id="searchForm">
-      <input id="q" placeholder="Kelime, cümle ya da ayet arayın: &quot;Allah&quot;, &quot;Kuran&quot;, 2:255…" autocomplete="off">
-      <button class="btn" type="submit">Ara</button>
-    </form>
-    <div class="chips">
-      ${['Allah', 'Kuran', 'Evrenlerin Rabbi', 'Doğru yol'].map((c) => `<span class="chip" data-q="${c}">${c}</span>`).join('')}
-    </div>
+  </section>
+  <div class="h-under">
+    ${lastRead ? `
+    <a class="resume" href="/ayet/${lastRead.s}/${lastRead.a}" data-link data-linear="1">
+      <span class="ico">${lastRead.s}</span>
+      <span class="rt"><small>Kaldığın yer</small><b>${esc(lastRead.surahName)} ${lastRead.s}:${lastRead.a}</b></span>
+      <span class="go">Devam et →</span>
+    </a>` : `<div class="resume empty-r">Aşağıdan bir sure seçerek okumaya başla; kaldığın yer burada görünür.</div>`}
     <div class="stats">
-      <div class="stat"><b>${fmt(stats.verses + 112)}</b><span>Ayet · besmele dahil</span></div>
-      <div class="stat"><b>${fmt(stats.questions)}</b><span>Soru</span></div>
-      <div class="stat"><b>${fmt(stats.links)}</b><span>Ayet Bağlantısı</span></div>
+      <div class="stat"><b>${fmtTR(stats.verses + 112)}</b><span>Ayet · besmele dahil</span></div>
+      <div class="stat"><b>${fmtTR(stats.questions)}</b><span>Soru</span></div>
+      <div class="stat"><b>${fmtTR(stats.links)}</b><span>Bağlantı</span></div>
       <div class="stat"><b>${stats.authors}</b><span>Meal</span></div>
     </div>
   </div>
-  <a class="explore-strip" href="/kesfet" data-link>
-    <span class="es-ico">🕸</span>
-    <span><b>Ayet Ağını Keşfet</b> — ${fmt(stats.links)} bağlantılık ağda en bağlantılı ayetleri görün</span>
-    <span class="es-go">→</span>
+  <a class="netband" href="/kesfet" data-link>
+    <svg width="58" height="40" viewBox="0 0 120 84" aria-hidden="true">
+      <line x1="60" y1="42" x2="18" y2="16"/><line x1="60" y1="42" x2="102" y2="14"/>
+      <line x1="60" y1="42" x2="14" y2="66"/><line x1="60" y1="42" x2="104" y2="68"/><line x1="60" y1="42" x2="60" y2="8"/>
+      <circle class="c" cx="60" cy="42" r="10"/>
+      <circle class="s" cx="18" cy="16" r="6"/><circle class="s" cx="102" cy="14" r="6"/>
+      <circle class="s" cx="14" cy="66" r="6"/><circle class="s" cx="104" cy="68" r="6"/><circle class="s" cx="60" cy="8" r="5"/>
+    </svg>
+    <span><b>Ayet Ağı</b><span>${fmtTR(stats.links)} bağlantıda en çok soru sorulan ve en çok cevap olan ayetleri gez.</span></span>
+    <span class="go">Ağı aç →</span>
   </a>
-  <div class="section">
-    <div class="section-head"><h2>Sureler</h2></div>
-    <div class="grid">
-      ${surahs.map((s) => `
-        <a class="sure" href="/sure/${s.id}" data-link>
-          <span class="no"><i>${s.id}</i></span>
-          <span><b>${esc(s.name.trim())}</b><small>${s.verse_count} ayet${s.id !== 1 && s.id !== 9 ? ' + besmele' : ''}</small></span>
-          <span class="q">${fmt(s.question_count)} soru</span>
-        </a>`).join('')}
+  <section>
+    <div class="fihrist-head">
+      <div><h2>Sureler</h2><small>114 sure · Mushaf sırası</small></div>
+      <input class="fsearch" id="suraFilter" aria-label="Sure ara" placeholder="Sure ara: Yasin, 36…" autocomplete="off">
     </div>
-  </div>`;
+    <div class="fihrist" id="fihrist">${surahs.map(suraHtml).join('')}</div>
+  </section>`;
   document.getElementById('searchForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const q = document.getElementById('q').value.trim();
     if (q) go('/ara?q=' + encodeURIComponent(q));
   });
-  app.querySelectorAll('.chip').forEach((c) =>
+  app.querySelectorAll('.h-chips .chip').forEach((c) =>
     c.addEventListener('click', () => go('/ara?q=' + encodeURIComponent(c.dataset.q))));
+  const fh = document.getElementById('fihrist');
+  document.getElementById('suraFilter').addEventListener('input', (e) => {
+    const q = fold(e.target.value);
+    let shown = 0;
+    fh.querySelectorAll('.sura').forEach((el) => {
+      const k = el.dataset.k;
+      const hit = !q || k.includes(q) || k.split(' ').pop() === q;
+      el.hidden = !hit;
+      if (hit) shown++;
+    });
+    let none = fh.querySelector('.none-found');
+    if (!shown && !none) { none = document.createElement('div'); none.className = 'none-found'; none.textContent = 'Bu adla bir sure bulunamadı.'; fh.appendChild(none); }
+    if (shown && none) none.remove();
+  });
 }
 
 async function pageSurah(no, hedefAyet) {
   const { surah, besmele, verses } = await get(`/api/surah/${no}`);
   app.innerHTML = `
   <div class="crumb"><a href="/" data-link>Sureler</a> / <b>${esc(surah.name.trim())}</b></div>
-  <div class="sure-head">
-    <h1>${surah.id}. ${esc(surah.name.trim())}</h1>
-    <span>${surah.verse_count} ayet${besmele ? ' + besmele' : ''}</span>
-    <button class="audio-btn" id="arToggle">🔤 Arapçasını göster</button>
-    ${surah.audio_mp3 ? `<button class="audio-btn" id="audioBtn">🔊 Sureyi dinle</button>` : ''}
-  </div>
+  <header class="sure-head">
+    ${yildiz(surah.id)}
+    <div class="sh-txt">
+      <h1>${esc(surah.name.trim())}</h1>
+      <div class="sh-meta">${surah.id}. sure · ${surah.verse_count} ayet${besmele ? ' + besmele' : ''}${surah.audio_duration ? ' · dinleme ' + sureSure(surah.audio_duration) : ''}</div>
+    </div>
+    <div class="sh-ar" lang="ar">${SURE_AR[surah.id - 1] || ''}</div>
+    <div class="sh-tools">
+      <button class="tool" id="arToggle" type="button">Arapçasını göster</button>
+      ${surah.audio_mp3 ? `<button class="tool" id="audioBtn" type="button">Sureyi dinle</button>` : ''}
+    </div>
+  </header>
   <div id="audioBox"></div>
-  <div id="verseList">
+  <div class="vlist" id="verseList">
     ${besmele ? `
       <a class="verse-row besmele-row" href="/ayet/1/1" data-link>
         <span class="ref2">${surah.id}:0</span>
@@ -150,7 +417,7 @@ async function pageSurah(no, hedefAyet) {
   let arShown = false;
   arToggle.addEventListener('click', () => {
     arShown = !arShown;
-    arToggle.textContent = arShown ? '🔤 Arapçasını gizle' : '🔤 Arapçasını göster';
+    arToggle.textContent = arShown ? 'Arapçasını gizle' : 'Arapçasını göster';
     document.querySelectorAll('#verseList .row-arabic').forEach((el) => (el.hidden = !arShown));
   });
   // Ayet ayet sayfasından "s:a" kırıntısıyla gelindiyse, listenin başı yerine
@@ -169,27 +436,37 @@ async function pageVerse(s, a) {
   const d = await get(`/api/verse/${s}/${a}`);
   const { verse, surah, besmele, questions, translations, prev, next } = d;
   // Yalnızca düz okuma sayılan bir bağlantıyla (sure listesi ya da ◁/▷) buraya gelindiyse konumu kaydet
-  if (pendingLinearNav) saveReadingPosition(s, a, surah.name);
+  const linear = pendingLinearNav;
+  if (linear) saveReadingPosition(s, a, surah.name);
   pendingLinearNav = false;
   verseNavPrev = prev || null;
   verseNavNext = next || null;
+  const sName = surah.name.trim();
+  trailVisit(location.pathname, `${sName} ${s}:${a}`, linear);
+  // İzde bir önceki adım bir soruysa, o soru listede "geldiğin soru" diye işaretlenir
+  const izT = readTrail();
+  const izI = izT.findIndex((x) => x.path === location.pathname);
+  const fromQ = izI > 0 ? (izT[izI - 1].path.match(/^\/soru\/(\d+)\//) || [])[1] : null;
+  const meta = [verse.juz ? `Cüz ${verse.juz}` : '', verse.page ? `Sayfa ${verse.page}` : ''].filter(Boolean).join(' · ');
   app.innerHTML = `
-  <div class="crumb"><a href="/" data-link>Sureler</a> / <a href="/sure/${s}" data-link>${esc(surah.name.trim())}</a> / <a href="/sure/${s}?ayet=${a}" data-link>${s}:${a}</a></div>
-  <div class="verse-wrap">
-    <div>
-      <div class="verse-card">
-        <div class="ref">${esc(surah.name.trim().toUpperCase())} ${s}:${a}</div>
-        ${besmele ? `<a class="besmele-line" href="/ayet/1/1" data-link title="${esc((besmele.meal || '').trim())} (numarasız besmele)">${esc(besmele.arabic || '')}</a>` : ''}
-        <div class="arabic">${esc(verse.arabic || '')}</div>
-        <div class="meal-text" id="mealText">${esc(verse.meal || '')}</div>
-        ${verse.transcription ? `<div class="trans">${esc(verse.transcription)}</div>` : ''}
+  <div class="crumb"><a href="/" data-link>Sureler</a> / <a href="/sure/${s}" data-link>${esc(sName)}</a> / <a href="/sure/${s}?ayet=${a}" data-link title="Sure listesinde bu ayete git">${s}:${a}</a></div>
+  <div class="verse-wrap sheet">
+    <div class="reading">
+      <div class="vhead">
+        <span class="vref">${esc(sName)} · ${s}:${a}</span>
+        ${meta ? `<span class="vmeta">${meta}</span>` : ''}
       </div>
+      ${besmele ? `<a class="besmele-line" href="/ayet/1/1" data-link lang="ar" title="${esc((besmele.meal || '').trim())} (numarasız besmele)">${esc(besmele.arabic || '')}</a>` : ''}
+      <div class="arabic" lang="ar">${esc((verse.arabic || '').trim())} ${ayetSonu(a)}</div>
+      <div class="orn" aria-hidden="true"></div>
+      <div class="meal-text" id="mealText">${esc(verse.meal || '')}</div>
+      ${verse.transcription ? `<div class="trans">${esc(verse.transcription)}</div>` : ''}
       <div class="verse-tools">
-        ${prev ? `<a class="tool" href="/ayet/${prev.surah_no}/${prev.ayah_no}" data-link data-linear="1">◁ ${prev.surah_no}:${prev.ayah_no}</a>` : ''}
-        ${next ? `<a class="tool" href="/ayet/${next.surah_no}/${next.ayah_no}" data-link data-linear="1">${next.surah_no}:${next.ayah_no} ▷</a>` : ''}
-        ${translations.length ? `<button class="tool" id="cmpBtn">☰ ${translations.length} meali karşılaştır</button>` : ''}
-        <a class="tool" href="/ag/${s}/${a}" data-link>🕸 Ağı gör</a>
-        ${verse.juz ? `<span class="tool">Cüz ${verse.juz}</span>` : ''}
+        ${prev ? `<a class="tool" href="/ayet/${prev.surah_no}/${prev.ayah_no}" data-link data-linear="1" title="Önceki ayet (←)">◁ ${prev.surah_no}:${prev.ayah_no}</a>` : ''}
+        ${next ? `<a class="tool" href="/ayet/${next.surah_no}/${next.ayah_no}" data-link data-linear="1" title="Sonraki ayet (→)">${next.surah_no}:${next.ayah_no} ▷</a>` : ''}
+        ${translations.length ? `<button class="tool" id="cmpBtn" type="button">${translations.length} meali karşılaştır</button>` : ''}
+        <a class="tool" href="/ag/${s}/${a}" data-link>Ağı gör</a>
+        <button class="tool gold" id="shareVerseBtn" type="button">Ayeti paylaş</button>
       </div>
       <div class="compare" id="cmp" style="display:none">
         <h3>Meal karşılaştırma</h3>
@@ -207,12 +484,15 @@ async function pageVerse(s, a) {
     <div class="qpanel">
       <h3>Bu ayete sorulan sorular</h3>
       <p class="hint">Her sorunun cevabı yalnızca başka ayetlerdir.</p>
-      ${questions.length ? questions.map((q, i) => `
-        <a class="qitem" href="/soru/${q.question_id}/${s}/${a}" data-link data-qid="${q.question_id}">
+      ${questions.length ? `<div class="qlist">${questions.map((q, i) => {
+        const here = fromQ && String(q.question_id) === fromQ;
+        return `
+        <a class="qitem${here ? ' here' : ''}" href="/soru/${q.question_id}/${s}/${a}" data-link data-qid="${q.question_id}">
           <span class="n">${String(i + 1).padStart(2, '0')}</span>
-          <span>${esc(q.text.trim())}</span>
-          <span class="go">→</span>
-        </a>`).join('') : `<div class="empty">Bu ayete henüz soru eklenmemiş.</div>`}
+          <span class="t">${esc(q.text.trim())}</span>
+          <span class="c">${here ? 'geldiğin soru' : (q.answer_count ? q.answer_count + ' ayet' : '→')}</span>
+        </a>`;
+      }).join('')}</div>` : `<div class="empty">Bu ayete henüz soru eklenmemiş.</div>`}
       <button type="button" class="suggest-toggle" id="suggestToggle">+ Bu ayete soru-cevap öner</button>
       <div class="suggest-box" id="suggestBox" hidden>
         <p class="hint">Sorunuz ve bunu cevapladığını düşündüğünüz ayet(ler) incelenip uygun görülürse eklenir.</p>
@@ -241,6 +521,10 @@ async function pageVerse(s, a) {
     const el = document.getElementById('cmp');
     el.style.display = el.style.display === 'none' ? 'block' : 'none';
     if (el.style.display === 'block') el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  document.getElementById('shareVerseBtn').addEventListener('click', async () => {
+    const txt = `${sName} ${s}:${a}\n\n${(verse.arabic || '').trim()}\n\n"${(verse.meal || '').trim().replace(/\s+/g, ' ')}"\n\nKuran'a Sor · yorum yok, yalnızca ayet\n${PUBLIC_ORIGIN}/ayet/${s}/${a}`;
+    showToast(await copyText(txt) ? 'Ayet kopyalandı. WhatsApp, Instagram veya X\'e yapıştırabilirsin.' : 'Kopyalanamadı, tekrar dene.');
   });
   document.getElementById('suggestToggle').addEventListener('click', () => {
     const box = document.getElementById('suggestBox');
@@ -274,48 +558,175 @@ async function pageVerse(s, a) {
 
 async function pageQuestion(id, s, a) {
   const d = await get(`/api/question/${id}?s=${s}&a=${a}`);
+  const hasSrc = !!Number(s);
+  const srcName = d.source && d.source.surah_name ? d.source.surah_name.trim() : '';
+  const srcRef = hasSrc ? `${srcName ? srcName + ' ' : ''}${s}:${a}` : '';
+  const qText = d.text.trim();
+  // "İlişkili:", "Kasıt ne?" gibi tek başına anlamsız başlıklar paylaşımda kaynak ayetle tamamlanır
+  const low = qText.toLocaleLowerCase('tr').replace(/[:：]\s*$/, '').trim();
+  const generic = !low || /^i?ilişkili( ayet)?$/.test(low) || /ile ilişkili ayet(ler)?$/.test(low);
+  const shareTitle = generic ? (srcRef ? `${srcRef} ile ilişkili ayetler` : 'İlişkili ayetler') : qText.replace(/[:：]\s*$/, '').trim();
+  const trailLabel = generic || low === 'kasıt ne?' || low === 'kasıt ne' ? (hasSrc ? `Soru · ${s}:${a}` : 'Soru') : shareTitle;
+  trailVisit(location.pathname, trailLabel, false);
+
+  const answers = d.answers.map((ans, i) => ({
+    ...ans,
+    ref: `${(ans.surah_name || '').trim()} ${ans.surah_no}:${ans.ayah_no}`.trim(),
+    on: i < 5,
+  }));
+  const link = `${PUBLIC_ORIGIN}/soru/${id}/${hasSrc ? s : 0}/${hasSrc ? a : 0}`;
+
   app.innerHTML = `
-  <div class="answer-head">
-    <div class="q-label">Soru${Number(s) ? ` · <a href="/ayet/${s}/${a}" data-link>${d.source ? esc(d.source.surah_name) + ' ' : ''}${s}:${a}</a>` : ''}</div>
-    <h1>${esc(d.text.trim())}</h1>
-    <div class="src">Cevap: <b>${d.answers.length} ayet</b> — yorum yok, yalnızca Kuran</div>
-    ${d.source && d.source.meal ? `
-      <div class="source-verse">
-        <div class="sv-ref">SORULAN AYET — ${s}:${a}</div>
-        <p>${markText(d.source.meal, d.source.highlight)}</p>
-      </div>` : ''}
-  </div>
-  <div class="answers">
-    ${d.answers.length ? d.answers.map((ans) => `
-      <div class="ans">
-        <div class="ref2">${ans.surah_no}:${ans.ayah_no}<small>${esc(ans.surah_name || '')}</small></div>
-        <p>${markText(ans.meal, ans.highlight)}</p>
-        <div class="meta">
-          <a href="/ayet/${ans.surah_no}/${ans.ayah_no}" data-link>AYETE GİT →</a>
+  <div class="crumb"><a href="/" data-link>Sureler</a>${hasSrc ? ` / <a href="/sure/${s}" data-link>${esc(srcName || 'Sure')}</a> / <a href="/ayet/${s}/${a}" data-link>${s}:${a}</a>` : ''} / <b>Soru</b></div>
+  <div class="q-wrap sheet" id="qWrap">
+    <div class="q-main">
+      <div class="q-label">Soru${hasSrc ? ` · <a href="/ayet/${s}/${a}" data-link>${esc(srcRef)}</a>` : ''}</div>
+      <h1 class="q-title">${esc(qText)}</h1>
+      <div class="q-sub">
+        <span>Cevap: <b>${d.answers.length} ayet</b> — yorum yok, yalnızca Kuran</span>
+        ${answers.length ? `<button type="button" class="share-toggle" id="shareToggle" aria-expanded="false" aria-controls="sharePanel">Paylaş</button>` : ''}
+      </div>
+      ${d.source && d.source.meal ? `
+        <div class="source-verse">
+          <div class="sv-ref">Sorulan ayet · ${esc(srcRef)}</div>
+          <p>${markText(d.source.meal, d.source.highlight)}</p>
+        </div>` : ''}
+      <div class="cevaplar" id="cevaplar">
+        ${answers.length ? answers.map((ans, i) => `
+          <div class="cevap${ans.on ? '' : ' off'}" data-i="${i}">
+            <label class="pick" title="Paylaşıma ekle"><input type="checkbox" id="pick${i}" data-i="${i}"${ans.on ? ' checked' : ''} aria-label="${esc(ans.ref)} paylaşıma eklensin"></label>
+            <div class="c-body">
+              <div class="c-ref">${esc(ans.ref)}</div>
+              <p>${markText(ans.meal, ans.highlight)}</p>
+              <a class="c-go" href="/ayet/${ans.surah_no}/${ans.ayah_no}" data-link>Ayete git →</a>
+            </div>
+          </div>`).join('') : `<div class="empty">Bu sorunun cevap bağlantısı bulunamadı.</div>`}
+      </div>
+      ${d.asked_on.length > 1 ? `
+        <div class="asked-on">Bu soru şu ayetlere de soruldu:
+          ${d.asked_on.filter((x) => !(x.surah_no == s && x.ayah_no == a))
+            .map((x) => `<a href="/soru/${id}/${x.surah_no}/${x.ayah_no}" data-link>${x.surah_no}:${x.ayah_no}</a>`).join(' · ')}
+        </div>` : ''}
+      ${!hasSrc ? '' : `<a class="graph-teaser" href="/ag/${s}/${a}" data-link>
+        <svg width="76" height="54" viewBox="0 0 120 84" aria-hidden="true">
+          <line x1="60" y1="42" x2="18" y2="16"/><line x1="60" y1="42" x2="102" y2="14"/>
+          <line x1="60" y1="42" x2="14" y2="66"/><line x1="60" y1="42" x2="104" y2="68"/><line x1="60" y1="42" x2="60" y2="8"/>
+          <circle class="c" cx="60" cy="42" r="10"/>
+          <circle class="s" cx="18" cy="16" r="6"/><circle class="s" cx="102" cy="14" r="6"/>
+          <circle class="s" cx="14" cy="66" r="6"/><circle class="s" cx="104" cy="68" r="6"/><circle class="s" cx="60" cy="8" r="5"/>
+        </svg>
+        <span><b>Ayet ağını keşfet</b><small>Bu ${d.answers.length} ayet birbirine başka sorularla da bağlı. ${s}:${a} merkezli ağı gez.</small></span>
+        <span class="btn2">Ağı aç →</span>
+      </a>`}
+    </div>
+    <aside class="share-panel" id="sharePanel" hidden aria-label="Paylaş">
+      <div class="sp-in">
+        <h3>Paylaş</h3>
+        <div class="sp-row">
+          <div class="seg" role="group" aria-label="Biçim">
+            <button type="button" id="fmtFull" aria-pressed="true">Tam metin</button>
+            <button type="button" id="fmtShort" aria-pressed="false">Kısa · X</button>
+          </div>
+          <div class="sel-links"><button type="button" id="selAll">Tümünü seç</button><button type="button" id="selNone">Temizle</button></div>
         </div>
-      </div>`).join('') : `<div class="empty">Bu sorunun cevap bağlantısı bulunamadı.</div>`}
-  </div>
-  ${d.asked_on.length > 1 ? `
-    <div class="crumb">Bu soru şu ayetlere de soruldu:
-      ${d.asked_on.filter((x) => !(x.surah_no == s && x.ayah_no == a))
-        .map((x) => `<a href="/soru/${id}/${x.surah_no}/${x.ayah_no}" data-link><b>${x.surah_no}:${x.ayah_no}</b></a>`).join(' · ')}
-    </div>` : ''}
-  ${!Number(s) ? '' : `<a class="graph-teaser" href="/ag/${s}/${a}" data-link>
-    <svg width="90" height="64" viewBox="0 0 120 84" fill="none">
-      <circle cx="60" cy="42" r="10" fill="#b08d2f"/>
-      <circle cx="18" cy="16" r="6" fill="#e7efe9" opacity=".8"/><circle cx="102" cy="14" r="6" fill="#e7efe9" opacity=".8"/>
-      <circle cx="14" cy="66" r="6" fill="#e7efe9" opacity=".8"/><circle cx="104" cy="68" r="6" fill="#e7efe9" opacity=".8"/>
-      <circle cx="60" cy="8" r="5" fill="#e7efe9" opacity=".6"/>
-      <line x1="60" y1="42" x2="18" y2="16" stroke="#5b8871"/><line x1="60" y1="42" x2="102" y2="14" stroke="#5b8871"/>
-      <line x1="60" y1="42" x2="14" y2="66" stroke="#5b8871"/><line x1="60" y1="42" x2="104" y2="68" stroke="#5b8871"/>
-      <line x1="60" y1="42" x2="60" y2="8" stroke="#5b8871"/>
-    </svg>
-    <span>
-      <b>Ayet ağını keşfet</b>
-      <small>Bu ${d.answers.length} ayet birbirine başka sorularla da bağlı. ${s}:${a} merkezli ağı interaktif gezin.</small>
-    </span>
-    <span class="btn2">Ağı Aç →</span>
-  </a>`}`;
+        <pre class="preview" id="sharePreview"></pre>
+        <span class="count" id="shareCount"></span>
+        <div class="sp-actions">
+          <button type="button" class="copy-btn" id="copyShare">Metni kopyala</button>
+          <button type="button" class="img-btn" id="imgShare">Görseli kaydet</button>
+        </div>
+        <p class="small-note">Soldaki ayetlerin kutucuklarıyla neyin paylaşılacağını seç. Görsel Instagram için 1080×1350 boyutundadır.</p>
+      </div>
+    </aside>
+  </div>`;
+
+  if (!answers.length) return;
+  const wrap = document.getElementById('qWrap');
+  const panel = document.getElementById('sharePanel');
+  const toggle = document.getElementById('shareToggle');
+  const pre = document.getElementById('sharePreview');
+  const count = document.getElementById('shareCount');
+  let mode = 'full';
+  const selected = () => answers.filter((x) => x.on);
+  const clean = (t) => String(t || '').trim().replace(/\s+/g, ' ');
+  const srcMeal = d.source && d.source.meal ? clean(d.source.meal) : '';
+  const buildText = () => {
+    const sel = selected();
+    if (mode === 'short') {
+      return `${shareTitle}${srcRef && !generic ? ` (${srcRef})` : ''}\nKuran'ın cevabı: ${sel.map((x) => x.ref).join(' · ')}\n${link}`;
+    }
+    // Sorunun sorulduğu ayet, sure-ayet numarası ve mealiyle birlikte başta yer alır
+    const srcBlock = srcMeal ? `\n\nSorulan ayet · ${srcRef}\n"${srcMeal}"` : '';
+    const body = sel.map((x) => `${x.ref}\n"${clean(x.meal)}"`).join('\n\n');
+    return `${shareTitle}${srcBlock}\n\nKuran'ın cevabı:\n\n${body}\n\nKuran'a Sor · yorum yok, yalnızca ayet\n${link}`;
+  };
+  const update = () => {
+    const n = selected().length;
+    const txt = n ? buildText() : '';
+    pre.textContent = n ? txt : 'Paylaşmak için soldan en az bir ayet seç.';
+    if (mode === 'short') {
+      count.textContent = `${n} ayet · ${txt.length} / 280 karakter`;
+      count.classList.toggle('over', txt.length > 280);
+    } else {
+      count.textContent = `${n} / ${answers.length} ayet seçili · ${txt.length} karakter`;
+      count.classList.remove('over');
+    }
+  };
+  const syncChecks = () => answers.forEach((x, i) => {
+    const box = document.getElementById('pick' + i);
+    if (box) box.checked = x.on;
+    const row = box && box.closest('.cevap');
+    if (row) row.classList.toggle('off', !x.on);
+  });
+  toggle.addEventListener('click', () => {
+    const open = panel.hidden;
+    panel.hidden = !open;
+    wrap.classList.toggle('sharing', open);
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.textContent = open ? 'Paylaşımı kapat' : 'Paylaş';
+    if (open) update();
+  });
+  document.getElementById('cevaplar').addEventListener('change', (e) => {
+    const i = e.target.dataset.i;
+    if (i === undefined) return;
+    answers[i].on = e.target.checked;
+    e.target.closest('.cevap').classList.toggle('off', !e.target.checked);
+    update();
+  });
+  const setMode = (m) => {
+    mode = m;
+    document.getElementById('fmtFull').setAttribute('aria-pressed', String(m === 'full'));
+    document.getElementById('fmtShort').setAttribute('aria-pressed', String(m === 'short'));
+    update();
+  };
+  document.getElementById('fmtFull').addEventListener('click', () => setMode('full'));
+  document.getElementById('fmtShort').addEventListener('click', () => setMode('short'));
+  document.getElementById('selAll').addEventListener('click', () => { answers.forEach((x) => (x.on = true)); syncChecks(); update(); });
+  document.getElementById('selNone').addEventListener('click', () => { answers.forEach((x) => (x.on = false)); syncChecks(); update(); });
+  document.getElementById('copyShare').addEventListener('click', async () => {
+    if (!selected().length) return showToast('Önce en az bir ayet seç.');
+    showToast(await copyText(buildText()) ? 'Kopyalandı. WhatsApp, Instagram veya X\'e yapıştırabilirsin.' : 'Kopyalanamadı, tekrar dene.');
+  });
+  document.getElementById('imgShare').addEventListener('click', async (e) => {
+    const sel = selected();
+    if (!sel.length) return showToast('Önce en az bir ayet seç.');
+    const btn = e.currentTarget;
+    btn.disabled = true; btn.textContent = 'Hazırlanıyor…';
+    try {
+      await saveShareImage({
+        kicker: "Kuran'a Sor",
+        title: shareTitle,
+        source: srcMeal ? { ref: srcRef, text: srcMeal } : null,
+        items: sel.map((x) => ({ ref: x.ref, text: clean(x.meal) })),
+        fileName: `kuranasor-soru-${id}.png`,
+      });
+      showToast('Görsel hazırlandı.');
+    } catch (err) {
+      showToast('Görsel oluşturulamadı: ' + err.message);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Görseli kaydet';
+    }
+  });
 }
 
 async function pageSearch(q) {
@@ -330,7 +741,7 @@ async function pageSearch(q) {
   app.innerHTML = `
   <div class="answer-head">
     <div class="q-label">Arama</div>
-    <form class="search" id="searchForm" style="margin:14px 0 18px;max-width:640px">
+    <form class="search" id="searchForm" role="search" style="margin:6px 0 8px">
       <input id="q" value="${esc(q)}" placeholder="Kelime, cümle ya da ayet arayın: &quot;Allah&quot;, &quot;Kuran&quot;, 2:255…" autocomplete="off">
       <button class="btn" type="submit">Ara</button>
     </form>
@@ -348,7 +759,7 @@ async function pageSearch(q) {
       // first_ref yoksa soru hiçbir ayete doğrudan sorulmamış (ortak cevap) — uydurma referans gösterme
       const [rs, ra] = (r.first_ref || '0:0').split(':');
       return `<a class="qitem" href="/soru/${r.question_id}/${rs}/${ra}" data-link>
-        <span class="n">${esc(r.first_ref || '—')}</span><span>${esc(r.text.trim())}</span><span class="go">→</span></a>`;
+        <span class="n">${esc(r.first_ref || '—')}</span><span class="t">${esc(r.text.trim())}</span><span class="c">→</span></a>`;
     }).join('')}
     ${d.verses.length ? `<h2>Ayetler (meal içinde)</h2>` : ''}
     ${d.verses.map((r) => `
@@ -435,9 +846,10 @@ function forceLayout(nodes, edges) {
 
 async function pageGraph(s, a) {
   const state = { depth: 1, hideQ: false, data: null };
+  trailVisit(location.pathname, `Ağ · ${s}:${a}`, false);
 
   app.innerHTML = `
-  <div class="crumb"><a href="/" data-link>Sureler</a> / <a href="/ayet/${s}/${a}" data-link>${s}:${a}</a> / <b>Ayet Ağı</b></div>
+  <div class="crumb"><a href="/" data-link>Sureler</a> / <a href="/sure/${s}" data-link>Sure ${s}</a> / <a href="/ayet/${s}/${a}" data-link>${s}:${a}</a> / <b>Ayet Ağı</b></div>
   <div class="ag-head">
     <h1>Ayet Ağı</h1>
     <span class="ctx">Merkez: ${s}:${a}</span>
@@ -453,10 +865,10 @@ async function pageGraph(s, a) {
     <div class="ag-canvas">
       <svg id="agSvg"></svg>
       <div class="ag-legend" id="agLegend">
-        <span><i class="dot" style="background:#2d6b50"></i>Ayet (tam alıntı)</span>
+        <span><i class="dot"></i>Ayet (tam alıntı)</span>
         <span><i class="dot ring"></i>Ayet (kısmi alıntı)</span>
-        <span><i class="dot" style="background:#b08d2f"></i>Soru</span>
-        <span><i class="dot" style="background:#1f4d3a;outline:2px solid #b08d2f;outline-offset:1px"></i>Merkez</span>
+        <span><i class="dot q"></i>Soru</span>
+        <span><i class="dot center"></i>Merkez</span>
       </div>
       <div class="ag-zoom">
         <button id="zIn">+</button><button id="zOut">−</button><button id="zFit">⌂</button>
@@ -514,20 +926,17 @@ async function pageGraph(s, a) {
         const A = byId.get(e.from), B = byId.get(e.to);
         if (!A || !B) return '';
         return `<line data-f="${e.from}" data-t="${e.to}" x1="${A.x.toFixed(1)}" y1="${A.y.toFixed(1)}" x2="${B.x.toFixed(1)}" y2="${B.y.toFixed(1)}"
-          stroke="${e.type === 'soru' ? '#c9bd9c' : '#ddd3ba'}" stroke-width="${e.type === 'soru' ? 1.7 : 1.1}"/>`;
+          class="${e.type === 'soru' ? 'e-soru' : 'e-cevap'}"/>`;
       }).join('') +
       nodes.map((n) => {
         const r = n.center ? 22 : n.type === 'question' ? 8 : 11;
         const partial = n.type === 'verse' && !n.center && !!n.highlight;
-        let fill, stroke;
-        if (n.center) { fill = '#1f4d3a'; stroke = ' stroke="#b08d2f" stroke-width="4"'; }
-        else if (n.type === 'question') { fill = '#b08d2f'; stroke = ''; }
-        else if (partial) { fill = 'none'; stroke = ' stroke="#2d6b50" stroke-width="3"'; }
-        else { fill = '#2d6b50'; stroke = ''; }
+        // renkler stil dosyasında: gece modunda da okunaklı kalsın
+        const cls = n.center ? 'n-center' : n.type === 'question' ? 'n-q' : partial ? 'n-vp' : 'n-v';
         const label = n.type === 'verse'
           ? `<text x="${n.x.toFixed(1)}" y="${(n.y + r + 13).toFixed(1)}" text-anchor="middle" class="ag-lbl">${n.label}</text>` : '';
         return `<g class="ag-node" data-id="${n.id}">
-          <circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${r}" fill="${fill}"${stroke}>
+          <circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${r}" class="${cls}">
             <title>${esc(n.label)}</title>
           </circle>${label}</g>`;
       }).join('');
@@ -634,8 +1043,8 @@ async function pageGraph(s, a) {
       if (myToken !== panelToken) return;
       panel.innerHTML = `
         <div class="pref">SEÇİLİ DÜĞÜM · SORU</div>
-        <h2 style="font-size:19px">${esc(n.label)}</h2>
-        <p style="color:#8a8168;font-size:13.5px;font-style:italic">Bu soru tek bir ayete sorulmamış; birden çok ayetin ortak cevabı olarak kayıtlı, tek bir kaynak ayeti yok.</p>
+        <h2 class="q-h">${esc(n.label)}</h2>
+        <p class="note">Bu soru tek bir ayete sorulmamış; birden çok ayetin ortak cevabı olarak kayıtlı, tek bir kaynak ayeti yok.</p>
         <div class="pbtns">
           <a class="pbtn g" href="/soru/${n.qid}/${s}/${a}" data-link>Soruya git →</a>
         </div>`;
@@ -647,7 +1056,7 @@ async function pageGraph(s, a) {
     const tag = `<span class="ag-tag ${partial ? 'partial' : 'full'}">${partial ? 'KISMİ ALINTI' : 'TAM ALINTI'}</span>`;
     panel.innerHTML = `
       <div class="pref">SEÇİLİ DÜĞÜM · SORU${tag}</div>
-      <h2 style="font-size:19px">${esc(n.label)}</h2>
+      <h2 class="q-h">${esc(n.label)}</h2>
       <div class="ar">${esc(info.arabic || '')}</div>
       <p>${partial ? markText(info.meal, n.highlight) : esc(info.meal || '')}</p>
       <div class="pmeta">Kaynak ayet: ${esc(info.surah_name)} ${n.s}:${n.a}</div>
@@ -700,7 +1109,7 @@ async function pageExplore() {
     <div class="q-label">Keşfet</div>
     <h1>Ayet Ağı</h1>
     <div class="src">Ayetler, sorular üzerinden birbirine <b>${fmt(d.totalLinks)}</b> bağla bağlı.
-      Bir ayete tıklayıp ağı oradan gezmeye başlayın; ya da herhangi bir ayet sayfasındaki "🕸 Ağı gör" butonunu kullanın.</div>
+      Bir ayete tıklayıp ağı oradan gezmeye başlayın; ya da herhangi bir ayet sayfasındaki "Ağı gör" düğmesini kullanın.</div>
   </div>
   <div class="hub-cols">
     <div>
@@ -930,7 +1339,7 @@ function setupFeedback() {
   const box = document.createElement('div');
   box.id = 'fbRoot';
   box.innerHTML = `
-    <button id="fbBtn" title="Öneri ve eleştirilerinizi yazın">💬 Öneri</button>
+    <button id="fbBtn" title="Öneri ve eleştirilerinizi yazın">Öneri</button>
     <div id="fbPanel" style="display:none">
       <b>Öneri / Eleştiri</b>
       <p>Görüşünüz bu sayfayla birlikte kaydedilir.</p>
@@ -986,6 +1395,9 @@ window.addEventListener('popstate', () => { pendingLinearNav = false; render(); 
 // Ayet sayfasında ←/→ ile önceki/sonraki ayete geç (◁/▷ düğmeleriyle aynı hedef, aynı okuma-konumu takibi)
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  // Alt + ←: okuma izinde bir önceki sayfa (masaüstünde tarayıcı geri tuşu yok)
+  if (e.altKey && e.key === 'ArrowLeft') { if (trailBack()) e.preventDefault(); return; }
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
   if (!/^\/ayet\//.test(location.pathname)) return;
   const tag = document.activeElement && document.activeElement.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
@@ -1010,6 +1422,8 @@ async function render() {
   const path = location.pathname;
   const params = new URLSearchParams(location.search);
   setActiveNav(path);
+  // Okuma izi yalnız ayet, soru ve ağ sayfalarında görünür; o sayfalar kendisi çizer
+  if (!/^\/(ayet|soru|ag)\//.test(path)) hideTrail();
   app.innerHTML = '<div class="loading">Yükleniyor…</div>';
   window.scrollTo(0, 0);
   try {

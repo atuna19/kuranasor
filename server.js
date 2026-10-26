@@ -114,7 +114,7 @@ const qStats = db.prepare(`
 `);
 
 const qSurahs = db.prepare(`
-  SELECT s.id, s.verse_count, sn.name,
+  SELECT s.id, s.verse_count, s.audio_duration, sn.name,
     (SELECT COUNT(DISTINCT qv.question_id || '-' || qv.verse_id) FROM question_verses qv
       JOIN verses v ON v.id = qv.verse_id
       WHERE v.surah_no = s.id AND qv.lang = ? AND qv.is_active = 1) AS question_count
