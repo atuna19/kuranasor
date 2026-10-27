@@ -118,6 +118,28 @@ themeBtn.addEventListener('click', () => {
 });
 syncThemeBtn();
 
+// ---------- STİL (Cilt ve sayfa / Çini) ----------
+const stilSel = document.getElementById('stilSel');
+const currentStil = () => (document.documentElement.getAttribute('data-stil') === 'cini' ? 'cini' : 'cilt');
+stilSel.value = currentStil();
+stilSel.addEventListener('change', () => {
+  const s = stilSel.value === 'cini' ? 'cini' : 'cilt';
+  document.documentElement.setAttribute('data-stil', s);
+  try { localStorage.setItem('kuranasor_stil', s); } catch {}
+});
+// Çini kahraman alanındaki ince geometrik desen (Cilt stilinde gizli)
+function girihSvg() {
+  let p = '';
+  for (let r = 40; r <= 200; r += 40) p += `<circle cx="210" cy="210" r="${r}"/>`;
+  for (let k = 0; k < 16; k++) {
+    const a = (k * Math.PI) / 8;
+    p += `<path d="M210 210 L${(210 + Math.cos(a) * 210).toFixed(1)} ${(210 + Math.sin(a) * 210).toFixed(1)}"/>`;
+  }
+  p += '<path d="M130 130h160v160h-160z"/><path d="M210 97l113 113-113 113-113-113z"/>';
+  p += '<path d="M90 90h240v240h-240z"/><path d="M210 40l170 170-170 170-170-170z"/>';
+  return `<svg class="girih" viewBox="0 0 420 420" aria-hidden="true">${p}</svg>`;
+}
+
 // ---------- OKUMA İZİ (geri dönüş) ----------
 // Ayet, soru ve ağ sayfalarında gezilen yol oturum boyunca tutulur. Düz okuma
 // (◁/▷, sure listesi, "Okumaya dön") izi o ayetle yeniden başlatır.
@@ -220,27 +242,34 @@ function wrapWordObjs(g, words, maxW) {
 }
 // Sıra: Kuran'a Sor → sorulan ayet (vurgusu altın) → soru → cevap ayetleri
 async function saveShareImage({ source, title, items, fileName }) {
+  // Görsel, seçili stilin renklerini ve yazı tiplerini kullanır
+  const cini = currentStil() === 'cini';
+  const FD = cini ? '"Sora", sans-serif' : '"Fraunces", Georgia, serif';
+  const FR = cini ? '"Newsreader", Georgia, serif' : '"Literata", Georgia, serif';
+  const FU = cini ? '"Figtree", sans-serif' : '"Instrument Sans", sans-serif';
+  const [COVER, GOLD, CREAM, BODY, MUTE, FRAME] = cini
+    ? ['#0f1626', '#45d3d9', '#e9eef7', '#c9d3e3', '#8592a8', 'rgba(114,144,255,.45)']
+    : ['#163a2e', '#d3b25c', '#efe6cc', '#e3dcc6', '#a9bcae', 'rgba(211,178,92,.45)'];
   try {
-    await Promise.all(['500 60px "Fraunces"', '400 28px "Literata"', 'italic 400 28px "Literata"', '600 22px "Instrument Sans"']
+    await Promise.all([`500 60px ${FD}`, `400 28px ${FR}`, `italic 400 28px ${FR}`, `600 22px ${FU}`]
       .map((f) => document.fonts.load(f).catch(() => null)));
   } catch {}
   const W = 1080, H = 1350, M = 96, maxW = W - M * 2;
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
   const g = c.getContext('2d');
-  const COVER = '#163a2e', GOLD = '#d3b25c', CREAM = '#efe6cc', BODY = '#e3dcc6', MUTE = '#a9bcae';
   g.fillStyle = COVER; g.fillRect(0, 0, W, H);
-  g.strokeStyle = 'rgba(211,178,92,.45)'; g.lineWidth = 2;
+  g.strokeStyle = FRAME; g.lineWidth = 2;
   g.beginPath(); g.roundRect ? g.roundRect(40, 40, W - 80, H - 80, 20) : g.rect(40, 40, W - 80, H - 80); g.stroke();
   g.textBaseline = 'alphabetic';
   const spaced = (txt, x, y, sp) => { // harf aralıklı küçük başlık
     let cx = x;
     for (const ch of txt) { g.fillText(ch, cx, y); cx += g.measureText(ch).width + sp; }
   };
-  const label = (txt, x, y) => { g.fillStyle = GOLD; g.font = '600 20px "Instrument Sans", sans-serif'; spaced(txt.toLocaleUpperCase('tr'), x, y, 2.6); };
+  const label = (txt, x, y) => { g.fillStyle = GOLD; g.font = `600 20px ${FU}`; spaced(txt.toLocaleUpperCase('tr'), x, y, 2.6); };
 
   // 1) Kuran'a Sor
-  g.fillStyle = GOLD; g.font = '600 24px "Instrument Sans", sans-serif';
+  g.fillStyle = GOLD; g.font = `600 24px ${FU}`;
   spaced("KURAN'A SOR", M, 140, 4);
   g.fillRect(M, 160, 64, 2);
 
@@ -251,7 +280,7 @@ async function saveShareImage({ source, title, items, fileName }) {
     let y = top;
     let src = null;
     if (srcWords) {
-      g.font = `400 ${size + 2}px "Literata", Georgia, serif`;
+      g.font = `400 ${size + 2}px ${FR}`;
       let lines = wrapWordObjs(g, srcWords, maxW - 26);
       if (lines.length > 7) { lines = lines.slice(0, 7); lines[6].push({ w: '…', hl: false }); }
       const h = 30 + lines.length * (size + 2) * 1.5;
@@ -260,7 +289,7 @@ async function saveShareImage({ source, title, items, fileName }) {
     }
     // 3) soru
     const tSize = Math.round(size * 1.75);
-    g.font = `500 ${tSize}px "Fraunces", Georgia, serif`;
+    g.font = `500 ${tSize}px ${FD}`;
     const tLines = wrapLines(g, title, maxW).slice(0, 3);
     const q = { y, tSize, tLines };
     y += 30 + tLines.length * tSize * 1.14 + 24;
@@ -268,7 +297,7 @@ async function saveShareImage({ source, title, items, fileName }) {
     const headY = y; y += 44;
     const out = [];
     for (const it of items) {
-      g.font = `400 ${size}px "Literata", Georgia, serif`;
+      g.font = `400 ${size}px ${FR}`;
       const ls = wrapLines(g, it.text, maxW);
       const h = 30 + ls.length * lh + 26;
       if (y + h > bottom) break;
@@ -286,13 +315,13 @@ async function saveShareImage({ source, title, items, fileName }) {
   if (L.src) {
     g.fillStyle = GOLD; g.fillRect(M, L.src.y, 3, L.src.h);
     label(source.ref, M + 26, L.src.y + 20);
-    g.font = `400 ${L.src.size}px "Literata", Georgia, serif`;
+    g.font = `400 ${L.src.size}px ${FR}`;
     const sp = g.measureText(' ').width;
     L.src.lines.forEach((line, k) => {
       let x = M + 26;
       const y = L.src.y + 30 + L.src.size * 1.5 * (k + 0.8);
       for (const o of line) {
-        g.font = o.hl ? `600 ${L.src.size}px "Literata", Georgia, serif` : `400 ${L.src.size}px "Literata", Georgia, serif`;
+        g.font = o.hl ? `600 ${L.src.size}px ${FR}` : `400 ${L.src.size}px ${FR}`;
         g.fillStyle = o.hl ? GOLD : CREAM;
         g.fillText(o.w, x, y);
         x += g.measureText(o.w).width + sp;
@@ -301,26 +330,26 @@ async function saveShareImage({ source, title, items, fileName }) {
   }
   // 3) soru
   label('Soru', M, L.q.y + 20);
-  g.fillStyle = CREAM; g.font = `500 ${L.q.tSize}px "Fraunces", Georgia, serif`;
+  g.fillStyle = CREAM; g.font = `500 ${L.q.tSize}px ${FD}`;
   L.q.tLines.forEach((l, k) => g.fillText(l, M, L.q.y + 30 + L.q.tSize * 1.14 * (k + 0.85)));
   g.fillStyle = GOLD; g.fillRect(M, L.ruleY, 64, 2);
   // 4) cevap ayetleri
   label("Kuran'ın cevabı", M, L.headY + 20);
   for (const row of L.out) {
-    g.fillStyle = GOLD; g.font = '600 20px "Instrument Sans", sans-serif';
+    g.fillStyle = GOLD; g.font = `600 20px ${FU}`;
     spaced(row.it.ref.toLocaleUpperCase('tr'), M, row.y + 20, 2.5);
-    g.fillStyle = BODY; g.font = `400 ${L.size}px "Literata", Georgia, serif`;
+    g.fillStyle = BODY; g.font = `400 ${L.size}px ${FR}`;
     row.ls.forEach((l, k) => g.fillText(l, M, row.y + 30 + L.lh * (k + 0.8)));
   }
   const rest = items.length - L.out.length;
   // alt bilgi
-  g.fillStyle = MUTE; g.font = '500 22px "Instrument Sans", sans-serif';
+  g.fillStyle = MUTE; g.font = `500 22px ${FU}`;
   g.fillText(rest > 0 ? `+${rest} ayet daha · tamamı bağlantıda` : 'Yorum yok, yalnızca ayet', M, H - 104);
   g.fillText(PUBLIC_ORIGIN.replace(/^https?:\/\//, ''), M, H - 72);
   const bx = W - M - 58, by = H - 136;
-  g.strokeStyle = 'rgba(211,178,92,.6)'; g.lineWidth = 2;
+  g.strokeStyle = FRAME; g.lineWidth = 2;
   g.beginPath(); g.roundRect ? g.roundRect(bx, by, 58, 58, 12) : g.rect(bx, by, 58, 58); g.stroke();
-  g.fillStyle = GOLD; g.font = '600 24px "Fraunces", Georgia, serif'; g.textAlign = 'center';
+  g.fillStyle = GOLD; g.font = `600 24px ${FD}`; g.textAlign = 'center';
   g.fillText('KS', bx + 29, by + 38); g.textAlign = 'left';
   const blob = await new Promise((res) => c.toBlob(res, 'image/png'));
   const url = URL.createObjectURL(blob);
@@ -350,15 +379,18 @@ async function pageHome() {
   };
   app.innerHTML = `
   <section class="hero">
+    ${girihSvg()}
     <div class="hero-in">
-      <div class="besm" lang="ar">بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّح۪يمِ</div>
       <h1 class="h-title">Sorunun cevabı yine <em>Kuran'da</em></h1>
       <div class="h-tag">Kuran en güzel tefsirdir</div>
-      <div class="h-verse">
-        <div class="a" lang="ar">وَلَا يَأْتُونَكَ بِمَثَلٍ اِلَّا جِئْنَاكَ بِالْحَقِّ وَ<b>اَحْسَنَ تَفْس۪يراً</b> ${ayetSonu(33)}</div>
-        <div class="t">Onların sana yönelttikleri her teze karşı, biz sana gerçeği ve <b>en güzel açıklamayı</b> getiririz.</div>
-        <div class="tl">ve la ye'tuneke bi meselin illa ci'nake bil hakkı ve <b>ahsene tefsira</b>.</div>
-        <div class="r">Furkan 25:33</div>
+      <div class="h-card">
+        <div class="besm" lang="ar">بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّح۪يمِ</div>
+        <div class="h-verse">
+          <div class="a" lang="ar">وَلَا يَأْتُونَكَ بِمَثَلٍ اِلَّا جِئْنَاكَ بِالْحَقِّ وَ<b>اَحْسَنَ تَفْس۪يراً</b> ${ayetSonu(33)}</div>
+          <div class="t">Onların sana yönelttikleri her teze karşı, biz sana gerçeği ve <b>en güzel açıklamayı</b> getiririz.</div>
+          <div class="tl">ve la ye'tuneke bi meselin illa ci'nake bil hakkı ve <b>ahsene tefsira</b>.</div>
+          <div class="r">Furkan 25:33</div>
+        </div>
       </div>
       <p class="h-sub">Ayetlere sorulan her soru, yorum yazılmadan yalnızca başka ayetlerle cevaplanır.</p>
       <form class="search h-search" id="searchForm" role="search">
@@ -503,7 +535,7 @@ async function pageVerse(s, a) {
   <div class="verse-wrap sheet">
     <div class="reading">
       <div class="vhead">
-        <span class="vref">${esc(sName)} · ${s}:${a}</span>
+        <span class="vref"><span class="vs">${esc(sName)}</span><span class="vn">${s}:${a}</span></span>
         ${meta ? `<span class="vmeta">${meta}</span>` : ''}
       </div>
       ${besmele ? `<a class="besmele-line" href="/ayet/1/1" data-link lang="ar" title="${esc((besmele.meal || '').trim())} (numarasız besmele)">${esc(besmele.arabic || '')}</a>` : ''}
